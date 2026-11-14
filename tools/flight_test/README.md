@@ -32,6 +32,12 @@ the C recorder. Python 3 and the checkout's `tools/flight_test/` directory must
 be present; no Python packages need to be installed. This is independent of
 USRP model and service manager. Normal OAI platform requirements still apply.
 
+In this guide, **native** means code running inside the C/C++ softmodem, as
+distinct from the Python collector. It does not mean a USRP clock or hardware
+timestamp. Numeric C recorder events carry source-host monotonic and UTC
+timestamps; device ticks, where explicitly recorded and valid, are separate
+fields.
+
 Relative `-O` paths and relative files referenced inside the configuration keep
 the same meaning because the worker retains the original launch directory.
 Legacy OAI current-directory statistics therefore still use that directory.
@@ -191,6 +197,80 @@ iperf totals from received-byte accounting. A gap in reports is described as an
 observation gap, not asserted to be an RF outage. Read the gNB summary for continuous
 UL receiver evidence and the UE summary for continuous DL receiver evidence.
 
+## Optional core logs and packet capture
+
+Core collection is opt-in and local to the host running the command. Give the
+gNB, UE and any separate core collector the same explicit experiment label with
+`--flight-run-id` or the top-level `flight-run-id` configuration key. The label
+joins records without synchronizing clocks or equating separate process attempts.
+
+For core containers on the gNB host, select their actual names:
+
+```sh
+sudo ./nr-softmodem -O gnb.conf --flight log \
+  --flight-run-id flight-20261114-01 \
+  --flight-core-logs docker:oai-amf,docker:oai-smf,docker:oai-upf
+```
+
+The collector follows only those logs from capture start. A comma-separated
+`journal:oai-amf.service` entry selects an existing local systemd journal instead.
+Names in these examples are placeholders for the installation. Restricted
+identity queries retain container/image identity or service state and restart
+information; they do not collect container environments or authentication
+configuration. The collector never starts or restarts a core component.
+
+Packet capture requires both the actual local interface and an explicit BPF
+filter. For example, if `eno1` carries the selected N2/N3 traffic:
+
+```sh
+sudo ./nr-softmodem -O gnb.conf --flight log \
+  --flight-run-id flight-20261114-01 \
+  --flight-pcap-interface eno1 \
+  --flight-pcap-filter 'sctp port 38412 or udp port 2152'
+```
+
+Choose the interface, addresses and ports for the actual deployment. N2/N3
+capture can show selected core transport traffic; it cannot show the radio
+random-access procedure (RACH). RACH diagnosis needs the UE/gNB source events.
+
+A core on another host uses the standalone collector there, from a checkout
+containing these tools:
+
+```sh
+python3 tools/flight_test/flight_auxiliary.py \
+  --output /data/FlightTests/core --run-id flight-20261114-01 --duration 3600 \
+  --core-logs docker:oai-amf,docker:oai-smf,docker:oai-upf \
+  --pcap-interface eno1 --pcap-filter 'sctp port 38412 or udp port 2152'
+```
+
+Omit the two packet options to collect only core logs. This command uses local
+access already available to its account; it does not SSH to another host or
+elevate privileges. Docker, journalctl/systemctl and dumpcap are used only when
+requested and available. No tool or package is installed automatically. Missing
+tools, access failures, early exits and incomplete cleanup remain explicit in
+status. An unavailable auxiliary observer does not request a radio restart or
+stop the radio.
+
+Integrated auxiliary text is redacted and shares a 64 MiB budget per attempt;
+the standalone collector has the same text budget per run. JSON Lines retain
+source kind/name, stream, shared run ID, host receipt clocks and the original
+source timestamp separately. They are under the attempt's `auxiliary/` directory
+or the standalone command's printed private run directory. Lifecycle and
+start/end identity observations record the selected source and collection
+failures. Intermediate source restarts may remain unobserved.
+
+Packet bytes are **unredacted**. They remain in a unique private directory
+(0700), with files restricted to 0600. Defaults are a 256-byte snaplen, up to
+eight sequential files, a 64 MiB total nominal byte quota and a 3600-second
+maximum duration. Reaching the quota stops capture without overwriting earlier
+files. Packet/block boundaries and final statistics can exceed the nominal
+byte threshold; status reports actual sizes and overshoot. The existing
+free-space reserve also applies. Shutdown first sends SIGINT to finish the
+current packet file and available statistics, then uses bounded owned-group
+cleanup. Captured/received/dropped packet counts remain unavailable when the
+tool does not supply them; missing statistics never mean zero drops. Review
+text redactions, storage losses and packet sensitivity before exporting a run.
+
 ## PRACH waveform preparation and experimental gNB detection
 
 The UE prepares contiguous PRACH root and waveform tables on its existing RRC
@@ -262,7 +342,7 @@ restart. The following defaults are flight experiment policy, not 3GPP timers:
 | Cell search continues with actual RX progress | Continue searching, without a 30-second deadline. |
 | Fresh native monitor snapshots but RX samples stop increasing for 10 seconds, confirmed for another second | Request a worker restart. |
 | PHY slot submissions keep advancing but DL or TX completions remain frozen for the stall interval, confirmed for another second | Request a worker restart. |
-| A cell was acquired, or an established PDU path was lost, and 120 seconds pass without PDU acceptance or restoration of an earlier accepted session’s DRB context | Request a worker restart after any observed protocol hold expires. |
+| A cell was acquired, or established protocol context was lost, and 120 seconds pass without PDU acceptance or restoration of an earlier accepted session’s DRB context | Confirm on a later fresh observation at least one second after expiry is first noticed, then request a worker restart if the context is still absent and no protocol hold applies. |
 | Unexpected nonzero exit or signal after native monitoring started | Retry with 5, 15, 30, then at most 60 seconds of process backoff. |
 | An accepted or restored DRB context and RX/slot/DL/TX progress remain continuously observed for 60 seconds | Reset process-backoff escalation. This does not clear a network wait or prove video delivery. |
 | Exit zero following a supported registration rejection | Retry after the recorded protocol and process waits. |
@@ -273,9 +353,27 @@ restart. The following defaults are flight experiment policy, not 3GPP timers:
 Change the two experiment thresholds using optional config strings
 `flight-recovery-stall = "10";` and `flight-recovery-attempt = "120";`, or the
 matching `--flight-recovery-stall` / `--flight-recovery-attempt` CLI options.
-Values must be finite and at least one second. These do not override network
-barring or backoff. A requested worker shutdown gets ten seconds of grace,
-then its owned process group is killed and fenced before replacement.
+Both values must be finite and at least one second. For example:
+
+```sh
+sudo ./nr-uesoftmodem -O ue.conf --flight log recovery \
+  --flight-recovery-stall 10 --flight-recovery-attempt 120
+```
+
+The stall threshold concerns local RX/DL/TX processing that stops progressing,
+with fresh monitor evidence and the confirmation step above. It is not a
+link-loss timeout or an iperf3 timeout. The attempt threshold starts after a cell
+is found, or after established protocol context is lost, and waits for PDU
+acceptance or the accepted session's DRB context to return. It imposes no initial
+cell-search deadline and is not a timer on an idle, established connection.
+
+At attempt expiry, repeated policy ticks over the same sample cannot confirm a
+failure. A later fresh source observation, received at least one second after
+the first expiry check, must still show missing context. Restoration cancels
+the pending restart; missing telemetry or an active protocol hold clears the
+pending expiry confirmation. Network barring and backoff remain authoritative.
+A requested worker shutdown gets ten seconds of grace, then its owned process
+group is killed and fenced before replacement.
 
 The implemented registration-reject subset preserves decoded T3346 lower
 bounds and T3502 values across worker attempts, uses a ten-second short-retry
@@ -345,6 +443,23 @@ readback and validity. Event 114 identifies a TX barrier-capacity stop. Join the
 monotonic time with sync epochs and TX schedule events, accounting for recorder loss. These additions do
 not change timing-advance arithmetic, gain decisions or the uncalibrated TX operating point.
 
+Event 126, `UE_TA_AGGREGATE_APPLIED`, adds the full signed aggregate internal TA
+command: its value is the net adjustment plus 31. It also retains UE, frame/slot,
+before/after sample counts and samples per millisecond. Event 112 keeps its
+existing field meanings; do not reinterpret an older event as this aggregate.
+
+Event 127, `GNB_UL_MAC_REJECT`, identifies a rejected uplink MAC PDU with its UE
+RNTI, frame/slot, HARQ PID (or -1 when unavailable), PDU size and Msg3/MsgA versus
+other reception path. Event 128, `PDCP_RX_STATE`, retains the PDCP UE ID, bearer
+and role identity, received sequence number, RX_DELIV, RX_NEXT and cumulative
+discarded-PDU count after a receive call. The PDCP UE ID is not necessarily the
+radio RNTI, and an input rejected before header decoding can leave the previous
+received sequence number. Neither event contains payloads or security keys.
+MAC-rejection and PDCP-state records are sampled in balanced detail mode; a
+forward PDCP receive gap forces observation. PDCP timer transitions between
+receive calls are not a complete event history. See [EVENT_SCHEMA.md](EVENT_SCHEMA.md)
+for field packing, units and sampling rules.
+
 Schema v1 currently advertises bounded device slots and TX send, TX async, RX stream, and TX queue metrics.
 The collector distinguishes known counters, known gauges, and bounded future numeric names that remain opaque
 until documented. Requested TX, accepted TX, and delivered TX are separate facts; v1 has no delivered-sample
@@ -410,6 +525,14 @@ strings in the `.conf` file or as their matching CLI option:
 | `flight-stdout-budget` / `--flight-stdout-budget` | `0` | Combined stdout/stderr byte cap; `0` means no total cap. |
 | `flight-host-budget` / `--flight-host-budget` | `0` | Host observations byte cap; `0` means no total cap. |
 | `flight-min-free-bytes` / `--flight-min-free-bytes` | `536870912` (512 MiB) | Free-space reserve; `0` explicitly disables this guard. |
+| `flight-run-id` / `--flight-run-id` | absent | Shared experiment label for gNB, UE and separate core capture; not a clock-alignment guarantee. |
+| `flight-core-logs` / `--flight-core-logs` | absent | Comma-separated local `docker:NAME` or `journal:UNIT` log sources. |
+| `flight-pcap-interface` / `--flight-pcap-interface` | absent | Explicit local interface; requires a capture filter. |
+| `flight-pcap-filter` / `--flight-pcap-filter` | absent | Explicit BPF filter; enables packet capture only with an interface. |
+| `flight-pcap-max-bytes` / `--flight-pcap-max-bytes` | `67108864` (64 MiB) | Total nominal packet-file byte quota; boundary overhead is reported. |
+| `flight-pcap-files` / `--flight-pcap-files` | `8` | Maximum sequential packet files; stop instead of overwriting. |
+| `flight-pcap-snaplen` / `--flight-pcap-snaplen` | `256` | Maximum captured bytes per packet. |
+| `flight-pcap-duration` / `--flight-pcap-duration` | `3600` | Maximum packet-capture duration in seconds. |
 
 For example, prepare different configuration files before the take-offs:
 
@@ -447,6 +570,7 @@ the final status and recorder footer when assessing completeness.
   random access, RRC, PDU establishment, and timing advance; gNB link/traffic,
   HARQ and random access; sampled USRP RX/TX results.
 - Redacted stdout/stderr and bounded-buffer host/interface/clock observations.
+- Optional selected core logs and packet capture when explicitly configured.
 - Binary, configuration, source and adjacent runtime-plugin fingerprints.
 - Private native radio-health snapshots, per-device metric intervals, lifecycle and observer-only transport diagnostics.
 - Exit status, intentional signals, recording failures, and loss counters.
@@ -461,17 +585,6 @@ native capability validation remains authoritative. An omitted capability
 file preserves the native built-in path. No SIM credentials are added to this
 manifest.
 
-Each attempt also writes `summary.json` after final status. This bounded offline
-summary separates observed PDU acceptance from iperf3 receiver delivery reports,
-and reports missing footer, numeric recorder loss, text writer loss and scan
-limits. A clean recorder footer can coexist with reported lost events. Missing
-receiver data remains unavailable, and neither PDU acceptance nor an iperf3
-sender rate proves delivery. Recreate a summary from one closed attempt with
-`python3 tools/flight_test/summary.py /path/to/attempt`; the output states the
-64 MiB scan budget and any truncation or malformed/partial lines. Recovery
-session parents retain their existing status and journal; summaries belong to
-individual attempts.
-
 No core address or GPS daemon is required. Missing optional host facilities
 are recorded as unavailable. Neither interface observations nor an ICMP result
 prove application connectivity. Logging alone never restarts the worker.
@@ -482,14 +595,87 @@ coordinated native shutdown once installed; during early startup its default
 termination can leave a missing recorder footer. After the existing
 10-second grace period, a stuck owned group is killed. Exit status is retained.
 
-No raw configuration, environment, Git diff, packet payload, camera video,
-application frame counters, or glass-to-glass latency is collected. Console
-redaction suppresses recognized secret/SIM/authentication blocks, but cannot
+Raw configuration, environment, Git diff, camera video, application frame
+counters and glass-to-glass latency are not collected. Packet bytes are captured
+only through the explicit optional packet settings above. Console and core-text
+redaction suppress recognized secret/SIM/authentication blocks, but cannot
 classify every possible protocol dump: review private captures before export.
 UHD TX asynchronous metadata is collected through the private radio-health
 channel in `radio_health.*.log`. Use its supported typed counters, source sequence
 and timestamps to distinguish startup, steady operation and teardown. Numeric
 RADIO_TX events describe sample acceptance; they do not prove RF delivery.
+
+## Summaries and the combined timeline
+
+`summary.py` supplies `AttemptTimeline` for the readable `[FLIGHT OBSERVED]`
+lines and `SessionSummary` for attempt/session totals. Their times are Python
+collector receipt observations on the host, including elapsed monotonic time;
+they are not exact protocol transition times, first-packet times or USRP
+timestamps. Numeric C recorder events separately carry source-host event times.
+
+Keep three milestones distinct: PDU acceptance is control-plane evidence,
+active/restored DRB is bearer-context evidence, and a positive local iperf3
+receiver report is observed delivery for that interval. TUN presence, sender
+rate or DRB state alone does not establish application delivery. Idle periods
+and absent receiver reports are observation gaps, not automatically failures
+or measured RF outages.
+
+Each attempt writes `summary.txt` and `summary.json`; recovery sessions also
+retain totals across attempts. The summary reports recorder footer/loss state,
+text-writer loss and available receiver evidence. An orderly footer can still
+report lost events. Recreate the bounded offline summary from a closed attempt:
+
+```sh
+python3 tools/flight_test/summary.py /path/to/attempt
+```
+
+Its output states the 64 MiB scan budget and any truncation, malformed/partial
+lines or unavailable files. Session parents keep their status and recovery
+journal; this command takes an individual attempt.
+
+For a combined offline report, `timeline.py` reads gNB and UE attempts or
+recovery-session directories and optional auxiliary core JSON Lines:
+
+```sh
+python3 tools/flight_test/timeline.py \
+  --gnb /data/FlightTests/gnb-session-directory \
+  --ue /data/FlightTests/ue-session-directory \
+  --core /data/FlightTests/core/auxiliary-run-directory \
+  --output /data/FlightTests/takeoff1-report
+```
+
+Use the actual printed capture directories. `--gnb`, `--ue` and `--core` are
+repeatable; omit unavailable inputs. For integrated core capture, pass the
+selected attempt's `auxiliary/` directory as `--core`. The output directory must
+be new, outside every input capture, with an existing parent. Inputs remain
+unchanged. The report reads core text/metadata, not packet payloads.
+
+The output contains `events.csv`, `events.jsonl`, `recovery.csv`,
+`clock_segments.csv`, `metadata.json`, per-attempt decoded source records under
+`decoded/`, and a standalone `report.html`. The HTML groups plots by units and
+offers host-UTC and per-domain elapsed-time views. Defaults limit plots to
+2000 points per series and 64 series; `--max-plot-points` and
+`--max-plot-series` change these display limits. CSV/JSON Lines exports retain
+all selected normalized records, including fields and source-file/line
+references. Recorder sampling, losses and malformed input still limit what was
+available to normalize.
+
+Ordering uses host monotonic clock domains. A proven host boot can share a
+domain; unknown boot identity keeps attempts or core captures separate. The
+report detects changes in wall-minus-monotonic offset above
+`--clock-step-ms` (default 5 ms) and splits clock segments. A detected step is an
+observed offset change, not an estimate of oscillator accuracy. Recovery
+durations are collector-observed milestones within one attempt, proven boot
+and clock segment; the report does not bridge an uncertain clock boundary.
+
+Host UTC alignment across machines remains **unverified**, even when labels
+match or chrony observations are present. Cross-host timing uncertainty is
+unavailable, not zero. Core source timestamps stay in their original fields;
+the plotted core time is collector receipt time. Experiment/run, session,
+attempt, host/boot, source ring/sequence and available RNTI/frame/slot or sync
+identities support inspection without inventing associations. SFN wraps every
+10.24 seconds; it cannot by itself join captures. The report does not infer
+one-way latency, exact cross-host RACH pairing or USRP timing from these clocks.
 
 ## Gain observations
 

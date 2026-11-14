@@ -34,6 +34,7 @@
 #include "ds/hashtable.h"
 #include "intertask_interface.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/LOG/flight_recorder.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "nr_pdcp_asn1_utils.h"
 #include "nr_pdcp_timer_thread.h"
@@ -252,7 +253,22 @@ static void do_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
   rb = nr_pdcp_get_rb(ue, rb_id, srb_flagP);
 
   if (rb != NULL) {
+    const uint32_t previous_next = rb->rx_next;
     rb->recv_pdu(rb, (char *)sdu_buffer, sdu_buffer_size);
+    // Record receive gaps immediately, and sample steady delivery/discards.
+    // No packet bytes or security material are copied into the recorder.
+    if (flight_recorder_sample(FLIGHT_SAMPLE_PDCP_RX_STATE,
+                               rb->stats.rxpdu_pkts,
+                               rb->rx_next > previous_next && rb->rx_next - previous_next > 1)) {
+      const uint64_t identity = ((uint64_t)(uint32_t)rb_id << 16) | ((uint64_t)(srb_flagP != 0) << 1) | (ctxt_pP->enb_flag != 0);
+      flight_recorder_emit(FLIGHT_EVENT_PDCP_RX_STATE,
+                           UEid,
+                           identity,
+                           rb->stats.rxpdu_sn,
+                           rb->rx_deliv,
+                           rb->rx_next,
+                           rb->stats.rxpdu_dd_pkts);
+    }
   } else {
     LOG_E(PDCP, "pdcp_data_ind: no RB found (rb_id %ld, srb_flag %d)\n", rb_id, srb_flagP);
   }

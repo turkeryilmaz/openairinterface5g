@@ -99,6 +99,8 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   char *stall = NULL, *attempt = NULL;
   char *traffic_peer = NULL, *traffic_bind = NULL, *traffic_port = NULL, *traffic_direction = NULL, *traffic_rate = NULL;
   char *capability_xml = NULL;
+  char *run_id = NULL, *core_logs = NULL, *pcap_interface = NULL, *pcap_filter = NULL;
+  char *pcap_max_bytes = NULL, *pcap_files = NULL, *pcap_snaplen = NULL, *pcap_duration = NULL;
   paramdef_t options[] = {
       STRINGPARAM("flight", "Flight features: log [recovery] [traffic], or off. CLI replaces config.\n", 0, &features, "off"),
       STRINGPARAM("flight-traffic-peer", "Required UE traffic destination IP.\n", 0, &traffic_peer, NULL),
@@ -111,10 +113,30 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
                   &traffic_rate,
                   NULL),
       STRINGPARAM("uecap_file", "UE capabilities XER file; flight checks XML syntax.\n", 0, &capability_xml, NULL),
-      STRINGPARAM("flight-recovery-stall", "Native RX progress timeout in seconds (default 10).\n", 0, &stall, NULL),
-      STRINGPARAM("flight-recovery-attempt", "Cell-present acquisition bound in seconds (default 120).\n", 0, &attempt, NULL),
+      STRINGPARAM("flight-recovery-stall",
+                  "Stalled local RX/DL/TX processing threshold in seconds (default 10); not a link-loss timeout.\n",
+                  0,
+                  &stall,
+                  NULL),
+      STRINGPARAM("flight-recovery-attempt",
+                  "Seconds allowed to acquire/restore protocol context after synchronization/context loss (default 120).\n",
+                  0,
+                  &attempt,
+                  NULL),
       STRINGPARAM("flight-output", "Capture directory; default: cmake_targets/log/FlightTests/YYYY-MM-DD.\n", 0, &output, NULL),
       STRINGPARAM("flight-repo", "Optional relocated source checkout containing tools/flight_test.\n", 0, &repo_option, NULL),
+      STRINGPARAM("flight-run-id", "Shared experiment label on gNB, UE and core.\n", 0, &run_id, NULL),
+      STRINGPARAM("flight-core-logs", "Optional comma-separated docker:NAME or journal:UNIT log sources.\n", 0, &core_logs, NULL),
+      STRINGPARAM("flight-pcap-interface",
+                  "Optional local packet-capture interface; requires flight-pcap-filter.\n",
+                  0,
+                  &pcap_interface,
+                  NULL),
+      STRINGPARAM("flight-pcap-filter", "Explicit packet-capture filter for the test traffic.\n", 0, &pcap_filter, NULL),
+      STRINGPARAM("flight-pcap-max-bytes", "Packet capture total byte budget (default 67108864).\n", 0, &pcap_max_bytes, NULL),
+      STRINGPARAM("flight-pcap-files", "Maximum sequential packet files (default 8; no overwrite).\n", 0, &pcap_files, NULL),
+      STRINGPARAM("flight-pcap-snaplen", "Maximum captured bytes per packet (default 256).\n", 0, &pcap_snaplen, NULL),
+      STRINGPARAM("flight-pcap-duration", "Maximum packet-capture duration in seconds (default 3600).\n", 0, &pcap_duration, NULL),
       STRINGPARAM("flight-core-ip", "Optional remote endpoint observation; not required for logging.\n", 0, &core, NULL),
       STRINGPARAM("flight-interface", "Observed UE interface (default oaitun_ue1).\n", 0, &interface, NULL),
       STRINGPARAM("flight-gpsd", "Optional GPSD endpoint HOST:PORT.\n", 0, &gpsd, NULL),
@@ -191,6 +213,14 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     return -1;
   }
   const char *pairs[][2] = {{"--output", output},
+                            {"--run-id", run_id},
+                            {"--core-logs", core_logs},
+                            {"--pcap-interface", pcap_interface},
+                            {"--pcap-filter", pcap_filter},
+                            {"--pcap-max-bytes", pcap_max_bytes},
+                            {"--pcap-files", pcap_files},
+                            {"--pcap-snaplen", pcap_snaplen},
+                            {"--pcap-duration", pcap_duration},
                             {"--core-ip", core},
                             {"--interface", interface},
                             {"--gpsd", gpsd},

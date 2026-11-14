@@ -975,3 +975,25 @@ does not mean zero LLRs: selection, unavailable stage/input and recorder loss
 must be distinguished. These are integer decoder units, not calibrated power,
 SNR, EVM or a proof of correct LLR signs. The sample is collected only after the
 existing116 selection, with no additional sampling state or dynamic allocation.
+
+### Portugal recovery additions (events 126–128)
+
+Older event fields remain unchanged. All three events retain host monotonic/UTC
+timestamps, source sequence and recorder-loss accounting.
+
+| ID | Name | a | b | c | d | e | f |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 126 | UE_TA_AGGREGATE_APPLIED | UE | frame*1000+slot | signed internal command (net adjustment +31) | samples before | samples after | samples per millisecond |
+| 127 | GNB_UL_MAC_REJECT | RNTI | frame*1000+slot | HARQ PID or -1 if unavailable | PDU bytes | 1 for Msg3/MsgA, 0 otherwise | reserved zero |
+| 128 | PDCP_RX_STATE | PDCP UE ID | bearer/role identity | last received SN | RX_DELIV COUNT | RX_NEXT COUNT | cumulative discarded PDUs |
+
+Event128 identity bits0/1 are is_gNB/is_SRB; bits16..47 are bearer ID. Other bits
+are zero. PDCP UE ID is not necessarily a radio RNTI. Last SN can describe the
+preceding packet if the current input was rejected before its header was decoded.
+No payload or security keys are recorded.
+
+Sampling groups16/17 cover MAC rejection and PDCP state. Balanced mode retains
+the first eight observations per emitting thread/group and a 1-in-64 key cohort
+thereafter. A forward PDCP receive gap forces observation; full detail selects
+all. Timers can change PDCP state between receptions, so event128 observes state
+after a receive call rather than every timer transition.

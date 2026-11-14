@@ -178,6 +178,8 @@ typedef enum {
   FLIGHT_EVENT_RADIO_TX_START_RESULT = 124,
   FLIGHT_EVENT_GNB_PUCCH_HARQ = 125,
   FLIGHT_EVENT_UE_TA_AGGREGATE_APPLIED = 126,
+  FLIGHT_EVENT_GNB_UL_MAC_REJECT = 127,
+  FLIGHT_EVENT_PDCP_RX_STATE = 128,
 } flight_recorder_event_t;
 
 /** Stable groups for accounting intentional reduction of routine detail. */
@@ -197,6 +199,8 @@ typedef enum {
   FLIGHT_SAMPLE_UE_TX_POWER_REQUEST = 13,
   FLIGHT_SAMPLE_UE_TX_CONTROL = 14,
   FLIGHT_SAMPLE_UE_TX_RELATIVE_POWER = 15,
+  FLIGHT_SAMPLE_GNB_UL_MAC_REJECT = 16,
+  FLIGHT_SAMPLE_PDCP_RX_STATE = 17,
 } flight_recorder_sample_group_t;
 
 /** Channel discriminator carried by FLIGHT_EVENT_UE_TX_POWER_REQUEST. */

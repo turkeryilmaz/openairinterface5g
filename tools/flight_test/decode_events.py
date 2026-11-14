@@ -75,6 +75,9 @@ TIMING_LAYOUTS = {
     123: ('RADIO_TX_BURST_BOUNDARY', ('radio_type', 'send_sequence', 'previous_end_ticks', 'final_ticks', 'requested_samples', 'boundary_flags')),
     124: ('RADIO_TX_START_RESULT', ('radio_type', 'send_sequence', 'final_ticks', 'requested_samples', 'accepted_samples', 'send_outcome')),
     125: ('GNB_PUCCH_HARQ', ('identity', 'frame_slot', 'harq_pid', 'outcome', 'ul_cqi_raw', 'round_before')),
+    126: ('UE_TA_AGGREGATE_APPLIED', ('ue', 'frame_slot', 'signed_command', 'before_samples', 'after_samples', 'samples_per_subframe')),
+    127: ('GNB_UL_MAC_REJECT', ('rnti', 'frame_slot', 'harq_pid', 'pdu_bytes', 'is_msg3_or_msga', 'reserved')),
+    128: ('PDCP_RX_STATE', ('ue_id', 'bearer_identity', 'received_sn', 'rx_deliv', 'rx_next', 'discarded_pdus')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -96,7 +99,9 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 125:
+    if event['event'] == 128:
+        row.update(rb_id=(event['b'] >> 16) & 0xffffffff, is_srb=bool(event['b'] & 2), is_gnb=bool(event['b'] & 1))
+    elif event['event'] == 125:
         identity = event['a'] & UINT64_MASK
         for name, shift in (('rnti', 0), ('module_id', 16), ('cell_id', 32)):
             row[name] = None if event['a'] == INT64_MIN else (identity >> shift) & 0xffff
@@ -1292,7 +1297,7 @@ def _write_tx_reference_outputs(output, ue_records, gnb_records):
 
 
 def decode(directory, output):
-    paths = sorted(directory.glob('oai-flight-recorder-*.ndjson'))
+    paths = list(directory.glob('oai-flight-recorder-*.ndjson'))
     if not paths:
         raise ValueError('expected recorder files from one process')
     identities = []
@@ -1305,6 +1310,7 @@ def decode(directory, output):
         slots.add(match[2])
     if len(set(identities)) != 1:
         raise ValueError('mixed process/capture identities; decode each run separately')
+    paths.sort(key=lambda path: int(path.stem.rsplit('-', 1)[1]))
     output.mkdir(parents=True, exist_ok=True)
     result = dict(files=len(paths), events=0, invalid_lines=0, unsupported_schema=0,
                   async_repeat_summaries=0, async_repeated_records=0,

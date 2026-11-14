@@ -32,6 +32,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
+from flight_auxiliary import (
+    AuxiliaryError, AuxiliarySupervisor, add_arguments as add_auxiliary_arguments,
+    validate_settings as validate_auxiliary_settings,
+)
 from flight_health import (
     HealthStateMachine,
     SystemHealthCollector,
@@ -758,8 +762,10 @@ def _git_executable() -> Optional[str]:
     return None
 
 
-def _stream_git_summary(executable: Optional[str], args: Sequence[str], count_status: bool = False) -> dict[str, Any]:
-    """Hash or count Git output while retaining neither patch nor path names."""
+def _stream_git_summary(
+    executable: Optional[str], args: Sequence[str], count_status: bool = False, timeout_seconds: float = 2.0,
+) -> dict[str, Any]:
+    """Hash or count Git output without retaining paths or delaying restart indefinitely."""
 
     if executable is None:
         return {"state": "unavailable"}
@@ -770,6 +776,7 @@ def _stream_git_summary(executable: Optional[str], args: Sequence[str], count_st
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             close_fds=True,
+            start_new_session=True,
         )
     except OSError as exc:
         return {"state": "unavailable", "reason": exc.__class__.__name__}
@@ -778,27 +785,48 @@ def _stream_git_summary(executable: Optional[str], args: Sequence[str], count_st
     paths = 0
     prefix = bytearray()
     skip_rename_path = False
+    deadline = time.monotonic() + timeout_seconds
+    timed_out = False
     try:
-        while True:
-            chunk = process.stdout.read(65536)
-            if not chunk:
-                break
-            digest.update(chunk)
-            if not count_status:
-                continue
-            for value in chunk:
-                if value == 0:
-                    if skip_rename_path:
-                        skip_rename_path = False
-                    elif len(prefix) == 3 and prefix[2] == 32:
-                        paths += 1
-                        skip_rename_path = prefix[0] in (ord("R"), ord("C")) or prefix[1] in (ord("R"), ord("C"))
-                    prefix.clear()
-                elif not skip_rename_path and len(prefix) < 3:
-                    prefix.append(value)
+        with selectors.DefaultSelector() as selector:
+            os.set_blocking(process.stdout.fileno(), False)
+            selector.register(process.stdout, selectors.EVENT_READ)
+            while selector.get_map() or process.poll() is None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    timed_out = True
+                    break
+                for key, _ in selector.select(timeout=min(0.05, remaining)):
+                    try:
+                        chunk = os.read(key.fileobj.fileno(), 65536)
+                    except BlockingIOError:
+                        continue
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    digest.update(chunk)
+                    if not count_status:
+                        continue
+                    for value in chunk:
+                        if value == 0:
+                            if skip_rename_path:
+                                skip_rename_path = False
+                            elif len(prefix) == 3 and prefix[2] == 32:
+                                paths += 1
+                                skip_rename_path = prefix[0] in (ord("R"), ord("C")) or prefix[1] in (ord("R"), ord("C"))
+                            prefix.clear()
+                        elif not skip_rename_path and len(prefix) < 3:
+                            prefix.append(value)
     finally:
         process.stdout.close()
-    returncode = process.wait()
+        if timed_out or process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        returncode = process.wait()
+    if timed_out:
+        return {"state": "timeout", "returncode": returncode}
     if returncode != 0:
         return {"state": "unavailable", "returncode": returncode}
     result: dict[str, Any] = {"state": "available", "sha256": digest.hexdigest()}
@@ -892,6 +920,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--role", choices=("gnb", "ue"), required=True)
     parser.add_argument("--output", metavar="ROOT", help="default: REPO/cmake_targets/log/FlightTests/local-date")
+    parser.add_argument("--run-id", help="shared experiment label for gNB, UE and a separate core collector")
+    add_auxiliary_arguments(parser)
     parser.add_argument("--console", action="store_true", help="mirror redacted console output without blocking capture")
     parser.add_argument("--working-directory", metavar="DIR", help="preserve the softmodem launch directory")
     parser.add_argument("--config", metavar="CONFIG")
@@ -949,6 +979,12 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
     try:
         args.traffic_settings = validate_settings(args)
     except TrafficError as exc:
+        parser.error(str(exc))
+    if args.run_id is not None and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,95}", args.run_id) is None:
+        parser.error("--run-id must contain 1..96 letters, digits, dots, underscores or hyphens")
+    try:
+        args.auxiliary_settings = validate_auxiliary_settings(args)
+    except (AuxiliaryError, ValueError) as exc:
         parser.error(str(exc))
     time_values = (args.stop_timeout, args.post_exit_drain_timeout, args.health_interval, args.startup_grace, args.recovery_stall, args.recovery_attempt)
     if not all(math.isfinite(value) for value in time_values):
@@ -1168,6 +1204,7 @@ class FlightCapture:
         self.radio_health = RadioHealthDiagnostics()
         self.radio_health_writer: Optional[BoundedRotatingWriter] = None
         self.traffic: Optional[TrafficSupervisor] = None
+        self.auxiliary: Optional[AuxiliarySupervisor] = None
         self.traffic_writer: Optional[BoundedRotatingWriter] = None
         self.counters = {
             "launch_attempts": 0,
@@ -1247,8 +1284,25 @@ class FlightCapture:
             writer.storage = storage
         if traffic_writer is not None:
             traffic_writer.storage = storage
+        if self.args.auxiliary_settings is not None:
+            auxiliary_dir = run_dir / "auxiliary"
+            private_directory(auxiliary_dir)
+            auxiliary_quota = ByteQuota(64 * MIB)
+
+            def auxiliary_writer(prefix: str) -> BoundedRotatingWriter:
+                writer = BoundedRotatingWriter(auxiliary_dir, prefix, auxiliary_quota, 4 * MIB, self.health)
+                writer.storage = storage
+                return writer
+
+            self.auxiliary = AuxiliarySupervisor(
+                self.args.auxiliary_settings, auxiliary_dir, self.args.run_id or self.session_id,
+                host_writer, auxiliary_writer, OutputSanitizer, private_directory,
+                storage_allows_write=storage.allows_write,
+            )
         old_handlers = self._install_signal_handlers() if self.stop_latch is None else None
         try:
+            if self.auxiliary is not None:
+                self.auxiliary.start()
             if self.traffic is not None:
                 try:
                     self.traffic.start()
@@ -1272,6 +1326,8 @@ class FlightCapture:
         finally:
             if self.traffic is not None:
                 self.traffic.close()
+            if self.auxiliary is not None:
+                self.auxiliary.close()
             if old_handlers is not None:
                 self._restore_signal_handlers(old_handlers)
             stdout_writer.close()
@@ -1304,6 +1360,8 @@ class FlightCapture:
         return {
             "schema_version": SCHEMA_VERSION,
             "kind": "flight_capture_metadata",
+            "experiment_id": self.args.run_id,
+            "auxiliary": self.args.auxiliary_settings.metadata() if self.args.auxiliary_settings else {"enabled": False},
             "capture_owner": {"uid": capture_owner()[0], "gid": capture_owner()[1]},
             "run_id": uuid.uuid4().hex,
             "session_id": self.session_id,
@@ -1337,7 +1395,7 @@ class FlightCapture:
                 "contains_oai_cwd_statistics": cwd_mode == "per_run_contained",
             },
             "runtime": {
-                "host": {"sysname": os.uname().sysname, "release": os.uname().release,
+                "host": {"nodename": os.uname().nodename, "sysname": os.uname().sysname, "release": os.uname().release,
                          "machine": os.uname().machine, "cpu_count": os.cpu_count(),
                          "affinity_cpus": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
                          "collector_nice": os.getpriority(os.PRIO_PROCESS, 0), "settings_changed": False},
@@ -1531,6 +1589,10 @@ class FlightCapture:
                 if self.traffic is not None:
                     self.traffic.tick(stopping=leader_returncode is not None or
                                       self._operator_stop_signal() is not None or self.recovery_stop_reason is not None)
+
+                if self.auxiliary is not None:
+                    self.auxiliary.tick(stopping=leader_returncode is not None or
+                                        self._operator_stop_signal() is not None or self.recovery_stop_reason is not None)
 
                 if leader_returncode is not None:
                     if (
@@ -1921,6 +1983,10 @@ class FlightCapture:
         if self.console is not None:
             self.console.close()
             stdout_writer.console = None
+        if self.auxiliary is not None:
+            self.auxiliary.close()
+            if self.auxiliary.snapshot().get("cleanup_failed"):
+                self.health.unhealthy("auxiliary_owned_group_cleanup_failed")
         revision = extra.get("stdout_sanitizer", {}).get("reported_oai_revision")
         head = getattr(self, "source_identity", {}).get("head")
         status = {
@@ -1937,6 +2003,8 @@ class FlightCapture:
             },
             "schema_version": SCHEMA_VERSION,
             "kind": "flight_capture_status",
+            "experiment_id": self.args.run_id,
+            "auxiliary": self.auxiliary.snapshot() if self.auxiliary else {"enabled": False},
             "session_id": self.session_id,
             "final_clock": clock_sample(),
             "state": state,

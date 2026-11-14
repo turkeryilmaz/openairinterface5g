@@ -30,11 +30,11 @@
 
 */
 static const int8_t pdsch_N_1_capability_1[4][4] = {
-/* mu      A            B            C   */
-{  0,      8,           14,          13  },
-{  1,      10,          13,          13  },
-{  2,      17,          20,          20  },
-{  3,      20,          24,          24  },
+    /* mu      A            B            C   */
+    {0, 8, 14, 13},
+    {1, 10, 13, 13},
+    {2, 17, 20, 20},
+    {3, 20, 24, 24},
 };
 
 /* TS 38.214 Table 5.3-2: PDSCH processing time for PDSCH processing capability 2
@@ -49,10 +49,10 @@ static const int8_t pdsch_N_1_capability_1[4][4] = {
 // mu == 2 is for FR1 only
 */
 static const float pdsch_N_1_capability_2[3][2] = {
-/* mu      A */
-{  0,      3   },
-{  1,      4.5 },
-{  2,      9   },
+    /* mu      A */
+    {0, 3},
+    {1, 4.5},
+    {2, 9},
 };
 
 /* TS 38.214 Table 6.4-1: PUSCH preparation time for PUSCH timing capability 1
@@ -64,11 +64,11 @@ static const float pdsch_N_1_capability_2[3][2] = {
 //   mu_UL is the SCS of the UL channel with which PUSCH to be transmitted
 */
 static const int8_t pusch_N_2_timing_capability_1[4][2] = {
-/* mu      N_2   */
-{  0,      10 },
-{  1,      12 },
-{  2,      23 },
-{  3,      36 },
+    /* mu      N_2   */
+    {0, 10},
+    {1, 12},
+    {2, 23},
+    {3, 36},
 };
 
 /* TS 38.214 Table 6.4-2: PUSCH preparation time for PUSCH timing capability 2
@@ -81,10 +81,10 @@ static const int8_t pusch_N_2_timing_capability_1[4][2] = {
 // mu == 2 is for FR1 only
 */
 static const float pusch_N_2_timing_capability_2[3][2] = {
-/* mu      N_2   */
-{  0,      5   },
-{  1,      5.5 },
-{  2,      11  },
+    /* mu      N_2   */
+    {0, 5},
+    {1, 5.5},
+    {2, 11},
 };
 
 /* TS 38.133 Table 8.6.2-1: BWP switch delay capability 1
@@ -96,11 +96,11 @@ static const float pusch_N_2_timing_capability_2[3][2] = {
 //   mu_UL is the SCS of the UL channel with which PUSCH to be transmitted
 */
 static const float pusch_d_2_2_timing_capability_1[4][2] = {
-/* mu      d_2_2   */
-{  0,      1   },
-{  1,      2   },
-{  2,      3   },
-{  3,      6   },
+    /* mu      d_2_2   */
+    {0, 1},
+    {1, 2},
+    {2, 3},
+    {3, 6},
 };
 
 /* TS 38.133 Table 8.6.2-1: BWP switch delay capability 2
@@ -112,11 +112,11 @@ static const float pusch_d_2_2_timing_capability_1[4][2] = {
 //   mu_UL is the SCS of the UL channel with which PUSCH to be transmitted
 */
 static const float pusch_d_2_2_timing_capability_2[4][2] = {
-/* mu      d_2_2   */
-{  0,      3   },
-{  1,      5   },
-{  2,      9   },
-{  3,      18  },
+    /* mu      d_2_2   */
+    {0, 3},
+    {1, 5},
+    {2, 9},
+    {3, 18},
 };
 
 #endif

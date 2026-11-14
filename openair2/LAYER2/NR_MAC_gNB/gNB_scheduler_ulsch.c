@@ -485,6 +485,8 @@ static int nr_process_mac_pdu(gNB_MAC_INST *nrmac,
   }
 
   if (!valid_ul_mac_pdu(pduP, pdu_len)) {
+    if (flight_recorder_sample(FLIGHT_SAMPLE_GNB_UL_MAC_REJECT, (uint64_t)frameP * 1000 + slot, false))
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UL_MAC_REJECT, UE->rnti, frameP * 1000 + slot, harq_pid, pdu_len, 0, 0);
     LOG_W(NR_MAC, "Reject UL MAC PDU with an invalid length at %d.%d for RNTI %04x (%u bytes)\n", frameP, slot, UE->rnti, pdu_len);
     return 0;
   }
@@ -917,6 +919,8 @@ static void nr_rx_ra_sdu(gNB_MAC_INST *mac,
   }
 
   if (!valid_ul_mac_pdu(sdu, sdu_len)) {
+    if (flight_recorder_sample(FLIGHT_SAMPLE_GNB_UL_MAC_REJECT, (uint64_t)frame * 1000 + slot, false))
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UL_MAC_REJECT, rnti, frame * 1000 + slot, -1, sdu_len, 1, 0);
     LOG_W(NR_MAC, "Reject Msg3/MsgA with an invalid MAC length at %d.%d for RNTI %04x (%u bytes)\n", frame, slot, rnti, sdu_len);
     if (!cfra)
       handle_msg3_failed_rx(mac, ra, UE->rnti, cell->ul_bler.harq_round_max);
