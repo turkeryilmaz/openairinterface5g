@@ -61,7 +61,9 @@ class Policy(unittest.TestCase):
         p.observe(sample(22, rx_samples=22, rrc_hold_until_ns=40 * NS), 22 * NS)
         self.assertEqual(p.tick(22 * NS).reason, "protocol_backoff")
         p.observe(sample(41, rx_samples=41), 41 * NS)
-        self.assertEqual(p.tick(41 * NS).action, "restart")
+        self.assertEqual(p.tick(41 * NS).reason, "confirm_cell_present_attempt_expired")
+        p.observe(sample(42, rx_samples=42), 42 * NS)
+        self.assertEqual(p.tick(42 * NS).action, "restart")
 
     def test_restored_drb_after_pdu_accept_cancels_deadline_until_next_loss(self):
         p = RecoveryPolicy(attempt_seconds=20)
@@ -75,7 +77,9 @@ class Policy(unittest.TestCase):
             self.assertEqual(p.tick(second * NS).reason, "drb_context_restored_path_unverified")
         p.observe(sample(100, rx_samples=100, drb_context_active=0), 100 * NS)
         p.observe(sample(121, rx_samples=121, drb_context_active=0), 121 * NS)
-        self.assertEqual(p.tick(121 * NS).reason, "cell_present_attempt_expired")
+        self.assertEqual(p.tick(121 * NS).reason, "confirm_cell_present_attempt_expired")
+        p.observe(sample(122, rx_samples=122, drb_context_active=0), 122 * NS)
+        self.assertEqual(p.tick(122 * NS).reason, "cell_present_attempt_expired")
 
     def test_rrc_or_drb_without_prior_pdu_accept_does_not_prove_restoration(self):
         for values in ({"rrc_state": 2}, {"drb_context_active": 1}):
@@ -83,10 +87,62 @@ class Policy(unittest.TestCase):
             p.begin_attempt(0)
             for second in range(1, 23):
                 p.observe(sample(second, rx_samples=second, sync_successes=1, **values), second * NS)
-            self.assertEqual(p.tick(22 * NS).reason, "cell_present_attempt_expired")
+            self.assertEqual(p.tick(22 * NS).reason, "confirm_cell_present_attempt_expired")
+            p.observe(sample(23, rx_samples=23, sync_successes=1, **values), 23 * NS)
+            self.assertEqual(p.tick(23 * NS).reason, "cell_present_attempt_expired")
         p.begin_attempt(23 * NS)
         p.observe(sample(24, drb_context_active=1), 24 * NS)
         self.assertFalse(p.context_available)
+
+    def test_attempt_expiry_waits_for_new_observation_and_cancels_on_restore(self):
+        p = RecoveryPolicy(attempt_seconds=20)
+        p.begin_attempt(0)
+        p.observe(sample(1, rx_samples=1, sync_successes=1, pdu_active=1, pdu_accepts=1), NS)
+        p.observe(sample(2, rx_samples=2, drb_context_active=0), 2 * NS)
+        p.observe(sample(22, rx_samples=22, drb_context_active=0), 22 * NS)
+        self.assertEqual(p.tick(22 * NS).reason, "confirm_cell_present_attempt_expired")
+        # Clock ticks alone, even after a second, cannot confirm an old sample.
+        self.assertEqual(p.tick(23 * NS).action, "observe")
+        p.observe(sample(23.1, rx_samples=23, drb_context_active=1), int(23.1 * NS))
+        self.assertEqual(p.tick(int(23.1 * NS)).reason, "drb_context_restored_path_unverified")
+        self.assertIsNone(p.attempt_expiry_check)
+        # Another loss receives its own deadline and confirmation.
+        p.observe(sample(24, rx_samples=24, drb_context_active=0), 24 * NS)
+        p.observe(sample(44, rx_samples=44, drb_context_active=0), 44 * NS)
+        self.assertEqual(p.tick(44 * NS).action, "observe")
+        p.observe(sample(45, rx_samples=45, drb_context_active=0), 45 * NS)
+        self.assertEqual(p.tick(45 * NS).action, "restart")
+
+    def test_attempt_confirmation_waits_for_source_after_confirmation_boundary(self):
+        for restored in (False, True):
+            p = RecoveryPolicy(attempt_seconds=20)
+            p.begin_attempt(0)
+            p.observe(sample(1, rx_samples=1, sync_successes=1, pdu_active=1, pdu_accepts=1), NS)
+            p.observe(sample(2, rx_samples=2, pdu_active=0, drb_context_active=0), 2 * NS)
+            p.observe(sample(22, rx_samples=22, drb_context_active=0), 22 * NS)
+            self.assertEqual(p.tick(22 * NS).action, "observe")
+            p.observe(sample(22.1, rx_samples=23, drb_context_active=0), int(22.1 * NS))
+            # A newer sample from before the boundary still cannot confirm expiry.
+            self.assertEqual(p.tick(23 * NS).action, "observe")
+            p.observe(sample(23.1, rx_samples=24, drb_context_active=int(restored)), int(23.1 * NS))
+            self.assertEqual(p.tick(int(23.1 * NS)).action, "observe" if restored else "restart")
+
+    def test_attempt_confirmation_resets_across_missing_telemetry_or_hold(self):
+        for hold in (False, True):
+            p = RecoveryPolicy(attempt_seconds=20)
+            p.begin_attempt(0)
+            p.observe(sample(1, rx_samples=1, sync_successes=1), NS)
+            p.observe(sample(21, rx_samples=21), 21 * NS)
+            self.assertEqual(p.tick(21 * NS).action, "observe")
+            if hold:
+                p.observe(sample(22, rx_samples=22, rrc_hold_until_ns=25 * NS), 22 * NS)
+                self.assertEqual(p.tick(22 * NS).reason, "protocol_backoff")
+            else:
+                self.assertEqual(p.tick(25 * NS).reason, "native_telemetry_unavailable")
+            p.observe(sample(26, rx_samples=26), 26 * NS)
+            self.assertEqual(p.tick(26 * NS).reason, "confirm_cell_present_attempt_expired")
+            p.observe(sample(27, rx_samples=27), 27 * NS)
+            self.assertEqual(p.tick(27 * NS).action, "restart")
 
     def test_reject_wait_survives_worker_and_operator_stop_wins(self):
         p = RecoveryPolicy()

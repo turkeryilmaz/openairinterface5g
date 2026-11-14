@@ -140,6 +140,7 @@ class RecoveryPolicy:
         self.last_sample_ns: Optional[int] = None
         self.rx_changed_ns: Optional[int] = None
         self.cell_attempt_ns: Optional[int] = None
+        self.attempt_expiry_check: Optional[tuple[int, int]] = None
         self.rx_samples: Optional[int] = None
         self.search_attempts = 0
         self.sync_successes = 0
@@ -328,6 +329,7 @@ class RecoveryPolicy:
             changes.append({"event": "pdu_path_lost"})
         if self.context_available:
             self.cell_attempt_ns = None
+            self.attempt_expiry_check = None
         self.rrc_hold_ns = v.get("rrc_hold_until_ns", 0)
         packed = v.get("nas_reject", 0)
         if packed and packed != self.last_reject_word:
@@ -396,6 +398,7 @@ class RecoveryPolicy:
             return Decision("observe", "gnb_radio_health_unavailable")
         if self.last_sample_ns is None or now_ns - self.last_sample_ns > 3 * NANOSECOND:
             # Telemetry absence is not proof that radio processing has stopped.
+            self.attempt_expiry_check = None
             return Decision("observe", "native_telemetry_unavailable")
         if self.rx_changed_ns is not None and now_ns - self.rx_changed_ns >= self.stall_ns:
             if self.stall_suspected_ns is None:
@@ -411,10 +414,20 @@ class RecoveryPolicy:
         else:
             self.worker_suspected_ns.clear()
         if now_ns < max(self.not_before_ns, self.rrc_hold_ns):
+            self.attempt_expiry_check = None
             return Decision("observe", "protocol_backoff", max(self.not_before_ns, self.rrc_hold_ns))
         if (not self.context_available and self.cell_attempt_ns is not None
                 and now_ns - self.cell_attempt_ns >= self.attempt_ns):
-            return Decision("restart", "cell_present_attempt_expired")
+            # Give the worker one observation interval to report a concurrent
+            # restoration before signalling shutdown. Repeated ticks over the
+            # same sample cannot confirm failure; missing telemetry is not one.
+            if self.attempt_expiry_check is None:
+                self.attempt_expiry_check = (now_ns, self.last_sample_ns)
+            first_check, source_sample = self.attempt_expiry_check
+            if self.last_sample_ns >= first_check + NANOSECOND and self.last_sample_ns > source_sample:
+                return Decision("restart", "cell_present_attempt_expired")
+            return Decision("observe", "confirm_cell_present_attempt_expired", first_check + NANOSECOND)
+        self.attempt_expiry_check = None
         if self.pdu_active:
             return Decision("observe", "pdu_established_path_unverified")
         return Decision("observe", "drb_context_restored_path_unverified" if self.context_available else "acquiring")
@@ -449,6 +462,7 @@ class RecoveryPolicy:
                 "registration_failures": self.registration_failures, "t3502_raw": self.t3502_raw,
                 "not_before_ns": self.not_before_ns, "blocked_reason": self.blocked_reason,
                 "last_reject_cause": self.last_reject_cause, "native_values": self.values,
+                "attempt_expiry_check": self.attempt_expiry_check,
                 "radio_health_initialized": self.radio_health_initialized,
                 "radio_progress_observed": self.radio_progress_observed,
                 "radio_progress_observed_ns": self.radio_progress_observed_ns,
