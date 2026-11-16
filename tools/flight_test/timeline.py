@@ -4,7 +4,8 @@
 
 Example: python3 timeline.py --gnb GNB_SESSION --ue UE_SESSION --output NEWDIR
 Inputs are attempts or recovery sessions containing attempts/. Input files are
-read only. NEWDIR must not exist and must be outside every input.
+read only. NEWDIR must not exist and must be outside every input. Capture's
+automatic report uses a narrowly scoped opt-in for its own report/ child.
 """
 from __future__ import annotations
 
@@ -14,9 +15,11 @@ import html
 import json
 import math
 import re
+import shutil
 import sqlite3
 from collections import Counter
 from pathlib import Path
+from string import Template
 from typing import Any, Iterator
 
 try:
@@ -30,7 +33,7 @@ COLUMNS = ["capture", "attempt", "role", "host", "boot_id", "clock_domain", "clo
            "source_file", "source_line", "ring", "sequence", "frame", "slot", "rnti", "sync_epoch",
            "fields", "metrics"]
 SCOPES = [
-    "Native clocks are source event clocks; host, recovery, traffic and core times are collector observations.",
+    "Radio/protocol events use source event clocks; host, recovery, traffic and core records use collector observations.",
     "Monotonic times compare only within a proven host boot. Unknown boots use separate attempt domains.",
     "Host UTC alignment is unverified. Shared experiment/run IDs and chrony tracking are not clock calibration.",
     "Clock segments split when consecutive wall-minus-monotonic offsets change beyond the selected threshold.",
@@ -40,8 +43,142 @@ SCOPES = [
     "Positive local receiver intervals show observed delivery; idle time and absent reports are not failures.",
     "PDU acceptance and active DRB are separate from delivery; interface/TUN presence does not prove a working bearer.",
     "Gain readbacks are device settings, not calibrated RF power. Different units have separate plots.",
-    "SQLite bounds normalization/sorting memory; production decode() retains its own typed records and sequence map.",
 ]
+
+# Mirror the exact PRB/channel-bandwidth pairs in nr_common.c:tables_5_3_2
+# and get_supported_bw_mhz(). Do not infer a channel width by rounding a grid.
+FR1_PRBS = {
+    0: (25, 52, 79, 106, 133, 160, 188, 216, 242, 270),
+    1: (11, 24, 38, 51, 65, 78, 92, 106, 119, 133, 162, 189, 217, 245, 273),
+    2: (None, 11, 18, 24, 31, 38, 44, 51, 58, 65, 79, 93, 107, 121, 135),
+}
+FR1_MHZ = (5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100)
+MCS_DISPLAY_LIMIT = 10000
+
+
+def arfcn_mhz(value: int | None) -> float | None:
+    """Global NR-ARFCN raster, matching nr_common.c:from_nrarfcn()."""
+    if value is None or not 0 <= value <= 3279165:
+        return None
+    if value < 600000:
+        return value * .005
+    if value < 2016667:
+        return 3000 + (value - 600000) * .015
+    return 24250.08 + (value - 2016667) * .060
+
+
+def recorded_configuration(directory: Path, identity: dict, role: str) -> dict:
+    """Extract only saved scalar settings and bounded startup-log observations.
+
+    Conflicting values remain unavailable. Includes are not expanded and current
+    bench files are never consulted. Command-line scalar overrides take priority.
+    """
+    text = identity.get("config_snapshot", {}).get("text", "")
+    if not isinstance(text, str):
+        text = ""
+    # libconfig strings and comments may contain example assignments. Strip
+    # both before scalar matching; saved snapshots are evidence, not executed.
+    text = re.sub(r'"(?:\\.|[^"\\])*"|/\*.*?\*/|//[^\n]*|\#[^\n]*', " ", text, flags=re.S)
+    command = identity.get("command", [])
+    command = command if isinstance(command, list) else []
+    sources = [str(directory / "metadata.json") + " config_snapshot.text / command"]
+
+    def setting(name: str) -> int | None:
+        values = {int(value) for value in re.findall(r"\b" + re.escape(name) + r"\s*=\s*(-?\d+)\s*;", text)}
+        overrides = {}
+        for index, argument in enumerate(command):
+            if not isinstance(argument, str) or not argument.startswith("--"):
+                continue
+            option, equals, value = argument.partition("=")
+            if option.rsplit(".", 1)[-1].removeprefix("--") != name:
+                continue
+            value = value if equals else command[index + 1] if index + 1 < len(command) else None
+            if isinstance(value, str) and re.fullmatch(r"-?\d+", value):
+                overrides[option] = int(value)
+            else:
+                return None
+        if overrides:
+            distinct = set(overrides.values())
+            if len(distinct) != 1 or len(values) > 1:
+                return None
+            return next(iter(distinct))
+        return next(iter(values)) if len(values) == 1 else None
+
+    observed: dict[str, set] = {}
+
+    def observe(key: str, value: Any, source: str) -> None:
+        observed.setdefault(key, set()).add(value)
+        if source not in sources and len(sources) < 32:
+            sources.append(source)
+
+    # Startup settings are normally near the beginning. A truncated scan is
+    # recorded; no unbounded stdout read or report-directory recursion occurs.
+    remaining, truncated = 1024 * 1024, False
+    for prefix in ("stdout", "stderr"):
+        for path in sorted(directory.glob(prefix + ".*.log"), key=rotation_key):
+            if not path.is_file():
+                continue
+            with path.open("rb") as stream:
+                line_number = 0
+                while True:
+                    line_number += 1
+                    line = stream.readline(min(65537, remaining + 1))
+                    if not line:
+                        break
+                    remaining -= len(line)
+                    if remaining < 0:
+                        truncated = True
+                        break
+                    value = line.decode("utf-8", errors="replace")
+                    source = f"{path}:{line_number}"
+                    match = re.search(r"DL frequency (\d+) Hz, UL frequency (\d+) Hz", value)
+                    if match:
+                        observe("dl_center_mhz", int(match[1]) / 1e6, source)
+                        observe("ul_center_mhz", int(match[2]) / 1e6, source)
+                    match = re.search(r"duplex mode (FDD|TDD)\b", value)
+                    if match:
+                        observe("duplex", match[1], source)
+                    match = re.search(r"nb_tx_streams (\d+), nb_rx_streams (\d+)", value)
+                    if match and role == "gnb":
+                        observe("gnb_rf", f"TX: {match[1]} / RX: {match[2]}", source)
+                    match = re.search(r"nb_rx_antenna (\d+), nb_tx_antenna (\d+)", value)
+                    if match and role == "ue":
+                        observe("ue_rf", f"TX: {match[2]} / RX: {match[1]}", source)
+                    match = re.search(r"pdsch_AntennaPorts N1 (\d+) N2 (\d+) XP (\d+) pusch_AntennaPorts (\d+)", value)
+                    if match and role == "gnb":
+                        observe("gnb_ports", f"PDSCH: {int(match[1]) * int(match[2]) * int(match[3])} / PUSCH: {match[4]}", source)
+            if truncated:
+                break
+        if truncated:
+            break
+    values = {key: next(iter(items)) if len(items) == 1 else None for key, items in observed.items()}
+    for key in ("dl_frequencyBand", "ul_frequencyBand", "dl_carrierBandwidth", "ul_carrierBandwidth",
+                "dl_subcarrierSpacing", "ul_subcarrierSpacing", "dl_harq_round_max", "ul_harq_round_max"):
+        values[key] = setting(key)
+    band = values.get("dl_frequencyBand")
+    # Classification of recorded operating bands from nr_common.c:nr_bandtable.
+    if "duplex" not in observed:
+        if band in {34, 38, 39, 40, 41, 46, 47, 48, 50, 51, 53, 77, 78, 79, 90, 96, 101, 102, 104, 257, 258, 260, 261}:
+            values["duplex"] = "TDD"
+        elif band in {1, 2, 3, 5, 7, 8, 12, 13, 14, 18, 20, 24, 25, 26, 28, 30, 65, 66, 70, 71, 74, 85,
+                      91, 92, 93, 94, 100, 254, 255, 256, 510, 511, 512}:
+            values["duplex"] = "FDD"
+    for key, name in (("dl_point_a_mhz", "dl_absoluteFrequencyPointA"),
+                      ("ul_point_a_mhz", "ul_absoluteFrequencyPointA"), ("ssb_reference_mhz", "absoluteFrequencySSB")):
+        values[key] = arfcn_mhz(setting(name))
+    # The startup get_frame_type() line records the actual band duplex type.
+    # Equal/separate tuned frequencies alone do not establish the duplex mode.
+    if values.get("duplex") == "FDD":
+        values["duplex_timing"] = "FDD / No TDD Slot Pattern"
+    elif values.get("duplex") == "TDD":
+        fields = ("dl_UL_TransmissionPeriodicity", "nrofDownlinkSlots", "nrofDownlinkSymbols",
+                  "nrofUplinkSlots", "nrofUplinkSymbols")
+        pattern = [setting(name) for name in fields]
+        if all(value is not None for value in pattern):
+            values["duplex_timing"] = (f"Period Code: {pattern[0]}; DL: {pattern[1]} Slots + {pattern[2]} Symbols; "
+                                       f"UL: {pattern[3]} Slots + {pattern[4]} Symbols")
+    return {"values": values, "sources": sources, "startup_scan_truncated": truncated,
+            "scope": "Saved configuration may omit includes; startup values and CLI overrides are used where recorded."}
 
 
 def packed(value: Any) -> str:
@@ -162,7 +299,7 @@ def native_fields(event: dict) -> tuple[dict, list]:
         frame_slot(event["c"])
     elif kind == 21:
         fields["frame"] = integer(event["c"])
-    fields.update({key: typed[key] for key in ("frame", "slot", "rnti", "sync_epoch", "prach_token",
+    fields.update({key: typed[key] for key in ("frame", "slot", "rnti", "sync_epoch", "prach_token", "preamble_index", "channel_code",
                                               "frame_slot", "absolute_tx_slot", "absolute_rx_slot") if key in typed})
     if type(typed.get("frame_slot")) is int:
         frame_slot(typed["frame_slot"])
@@ -171,6 +308,17 @@ def native_fields(event: dict) -> tuple[dict, list]:
     elif kind in (21, 23):
         fields["rnti"] = integer(event["b"])
     elif kind in (22, 24, 25, 26):
+        fields["rnti"] = integer(event["a"])
+    if kind == 21:
+        fields["cell"] = integer(event["a"])
+    if kind in (129, 130):
+        identity = event["a"]
+        fields.update(rnti=identity & 0xffff, cell=(identity >> 16) & 0xffff,
+                      module=(identity >> 32) & 0xffff, context_generation=event["b"])
+        if kind == 130:
+            fields.update(frame=integer(event["c"]), dl_harq_max_attempts=integer(event["d"]),
+                          ul_harq_max_attempts=integer(event["e"]))
+    elif kind in (131, 132):
         fields["rnti"] = integer(event["a"])
     entity = f"RNTI {fields['rnti']}" if fields.get("rnti") is not None else ""
     outcome = ""
@@ -216,6 +364,17 @@ def native_fields(event: dict) -> tuple[dict, list]:
         for index, key in enumerate("bcde"):
             add(f"gNB {direction} HARQ round {index}", integer(event[key]), "count", entity)
         add(f"gNB {direction} MAC transport counter", integer(event["f"]), "bytes", entity)
+    elif kind == 129:
+        for key, direction in (("c", "DL"), ("d", "UL")):
+            value = integer(event[key])
+            if value is not None and 0 <= value <= 1000000:
+                add(f"{direction} scheduler BLER", value / 10000, "BLER %", entity)
+        fields.update(dl_last_num_sched=integer(event["e"]), ul_last_num_sched=integer(event["f"]))
+    elif kind in (131, 132):
+        direction = "DL" if kind == 131 else "UL"
+        fields[direction.lower() + "_harq_max_attempts"] = integer(event["f"])
+        for index, key in enumerate("bcde", 4):
+            add(f"gNB {direction} HARQ round {index}", integer(event[key]), "count", entity)
     typed_metrics = {
         40: (("rx_readback_db", "RX device gain", "gain setting dB"), ("tx_readback_db", "TX device gain", "gain setting dB")),
         42: (("mean_power_dbfs", "sampled RX mean", "dBFS"), ("peak_component_dbfs", "sampled RX peak", "dBFS")),
@@ -240,8 +399,12 @@ def native_fields(event: dict) -> tuple[dict, list]:
 
 
 class Report:
-    def __init__(self, output: Path, clock_step_ms: float, max_plot_points: int, max_plot_series: int):
+    def __init__(self, output: Path, clock_step_ms: float, max_plot_points: int, max_plot_series: int,
+                 min_free_bytes: int = 512 * 1024 * 1024):
         self.output = output
+        self.min_free_bytes = min_free_bytes
+        self.added = 0
+        self.check_space()
         self.clock_step_ns = int(clock_step_ms * 1e6)
         self.max_plot_points = max_plot_points
         self.max_plot_series = max_plot_series
@@ -256,9 +419,21 @@ class Report:
                         "ring INTEGER, sequence INTEGER, fields TEXT, metrics TEXT)")
         self.db.execute("CREATE TABLE points(series TEXT, family TEXT, unit TEXT, event_id INTEGER, value REAL)")
 
+    def check_space(self, required_bytes: int = 0) -> None:
+        if shutil.disk_usage(self.output).free < self.min_free_bytes + required_bytes:
+            raise OSError("timeline free-space reserve reached")
+
+    def write_text(self, name: str, content: str) -> None:
+        payload = content.encode("utf-8")
+        self.check_space(len(payload))
+        (self.output / name).write_bytes(payload)
+
     def add(self, context: dict, *, name: str, kind: int | None, origin: str, category: str,
             mono: int | None, utc: int | None, source: str, line: int, fields: dict, metrics: list,
             boot: str | None = None, ring: int | None = None, sequence: int | None = None) -> None:
+        if self.added % 1024 == 0:
+            self.check_space()
+        self.added += 1
         boot = boot or context.get("boot")
         host = context["host"]
         domain = packed([host, boot]) if boot and context["host_known"] else packed([context["capture"], context["attempt"], host])
@@ -305,20 +480,55 @@ class Report:
                     "host": host, "host_identity_available": host_known, "boot_ids": sorted(boots),
                     "experiment_id": identity.get("experiment_id"), "run_id": identity.get("user_run_id", identity.get("run_id")),
                     "session_id": identity.get("session_id"), "decoder": None}
+            info["recorded_configuration"] = recorded_configuration(attempt, identity, role)
             recorder = attempt / "recorder"
             if recorder.is_dir() and any(recorder.glob("oai-flight-recorder-*.ndjson")):
                 decoded = self.output / "decoded" / capture / f"{ordinal:06d}"
-                status = decoder.decode(recorder, decoded)
+                status = decoder.decode(recorder, decoded, check_space=self.check_space)
                 info["decoder"] = {"directory": str(decoded.relative_to(self.output)),
                     **{key: status.get(key) for key in ("files", "events", "invalid_lines", "unsupported_schema",
                                                        "clean_footer_observed", "footers", "sampling_config")}}
                 with (decoded / "events.csv").open(newline="") as source_csv:
+                    batches = {}
+                    harq_limits = {"dl": set(), "ul": set()}
                     for row in csv.DictReader(source_csv):
                         event = {key: int(row[key]) for key in decoder.FIELDS[3:]}
                         if event["event"] not in SELECTED:
                             continue
                         event.update(source_file=row["source_file"], source_line=int(row["source_line"]))
                         fields, metrics = native_fields(event)
+                        ring = event["ring"]
+                        if event["event"] == 130 and 0 <= ring < 64:
+                            batches[ring] = dict(fields, last_sequence=event["sequence"], last_mono=event["mono_ns"])
+                        elif event["event"] in (21, 22, 24, 25, 26, 131, 132):
+                            batch = batches.get(ring)
+                            # The scheduler emits one ordered batch under its existing lock.
+                            # A stale/mismatched batch must not identify a reused RNTI.
+                            if (batch and batch.get("rnti") == fields.get("rnti")
+                                    and fields.get("cell", batch.get("cell")) == batch.get("cell")
+                                    and event["sequence"] > batch["last_sequence"]
+                                    and 0 <= event["mono_ns"] - batch["last_mono"] <= 100000000):
+                                fields.update({key: batch[key] for key in ("module", "cell", "context_generation",
+                                               "dl_harq_max_attempts", "ul_harq_max_attempts") if key in batch})
+                            else:
+                                fields["context_identity"] = "unverified; lifetime generation not recorded"
+                        if fields.get("context_generation") is not None:
+                            entity = (f"RNTI {fields['rnti']} / Cell {fields['cell']} / Module {fields['module']} / "
+                                      f"Context {fields['context_generation']}")
+                            metrics = [[name, value, unit, entity] for name, value, unit, _ in metrics]
+                        if event["event"] == 130:
+                            for direction in ("dl", "ul"):
+                                key = direction + "_harq_round_max"
+                                actual = fields.get(direction + "_harq_max_attempts")
+                                if actual is not None:
+                                    harq_limits[direction].add(actual)
+                                    info["recorded_configuration"]["values"][key] = (
+                                        actual if len(harq_limits[direction]) == 1 else None)
+                                    info["recorded_configuration"].setdefault("observed_harq_limits", {})[direction] = sorted(harq_limits[direction])
+                            source_ref = str(recorder / row["source_file"]) + ":" + row["source_line"] + " GNB_UE_CONTEXT"
+                            refs = info["recorded_configuration"]["sources"]
+                            if source_ref not in refs and len(refs) < 32:
+                                refs.append(source_ref)
                         if "typed_decode_error" in fields:
                             self.warnings["invalid_native_typed_payloads"] += 1
                         self.add(context, name=decoder.NAMES.get(event["event"], "UNKNOWN"), kind=event["event"],
@@ -406,6 +616,7 @@ class Report:
                      mono=mono, utc=utc, source=source, line=line, fields=fields, metrics=metrics)
 
     def segment_clocks(self) -> int:
+        self.check_space()
         self.db.execute("CREATE INDEX ordering ON events(domain,mono,id)")
         self.db.execute("CREATE INDEX event_kind ON events(category,name)")
         total = 0
@@ -446,8 +657,11 @@ class Report:
         return total
 
     def export(self) -> tuple[int, int]:
+        self.check_space()
         event_count = recovery_count = 0
         state = {}
+        self.db.execute("CREATE TABLE rate_state(identity TEXT PRIMARY KEY,mono INTEGER,dl INTEGER,ul INTEGER,"
+                        "generation INTEGER,epoch INTEGER,source TEXT,line INTEGER)")
         with (self.output / "events.csv").open("w", newline="") as csv_dst, \
                 (self.output / "events.jsonl").open("w") as json_dst, \
                 (self.output / "recovery.csv").open("w", newline="") as recovery_dst:
@@ -458,18 +672,51 @@ class Report:
                 "loss_source_file", "loss_source_line", "milestone_source_file", "milestone_source_line"])
             recovery_writer.writeheader()
             for raw in self.db.execute("SELECT * FROM events ORDER BY domain,mono IS NULL,mono,id"):
+                if event_count % 1024 == 0:
+                    self.check_space()
                 (event_id, capture, attempt, role, host, boot, domain, mono, utc, segment, name, kind, origin,
                  category, source, line, ring, sequence, fields_json, metrics_json) = raw
                 fields, metrics = json.loads(fields_json), json.loads(metrics_json)
+                if kind == 21 and mono is not None and fields.get("rnti") is not None:
+                    rate_key = packed([capture, attempt, domain, segment, fields.get("module"),
+                                       fields.get("cell"), fields["rnti"]])
+                    previous = self.db.execute("SELECT mono,dl,ul,generation,epoch,source,line FROM rate_state WHERE identity=?",
+                                               (rate_key,)).fetchone()
+                    counters = {"dl": integer(fields["raw"].get("d")), "ul": integer(fields["raw"].get("e"))}
+                    generation, epoch = fields.get("context_generation"), previous[4] if previous else 0
+                    if previous:
+                        seconds = (mono - previous[0]) / 1e9
+                        reset = any(value is not None and prior is not None and value < prior
+                                    for value, prior in zip(counters.values(), previous[1:3]))
+                        same_context = generation == previous[3]
+                        if not same_context or reset or not 0 < seconds <= 2:
+                            epoch += 1
+                            self.warnings["mac_rate_intervals_excluded_context_reset_or_gap"] += 1
+                        else:
+                            entity = next((item[3] for item in metrics), f"RNTI {fields['rnti']}")
+                            for (direction, value), prior in zip(counters.items(), previous[1:3]):
+                                if value is not None and prior is not None and value >= prior:
+                                    label = "DL MAC SDU rate (submitted)" if direction == "dl" else "UL MAC SDU rate (received)"
+                                    metrics.append([label, 8 * (value - prior) / seconds, "bit/s", entity])
+                            fields["mac_rate_interval"] = {"seconds": seconds, "previous_source": previous[5],
+                                                           "previous_line": previous[6], "context_verified": generation is not None}
+                    fields["counter_context_epoch"] = epoch
+                    self.db.execute("INSERT OR REPLACE INTO rate_state VALUES(?,?,?,?,?,?,?,?)",
+                                    (rate_key, mono, counters["dl"], counters["ul"], generation, epoch, source, line))
+                    # Retain derived rates and context in the ordered plot source.
+                    self.db.execute("UPDATE events SET fields=?,metrics=? WHERE id=?", (packed(fields), packed(metrics), event_id))
                 row = dict(zip(COLUMNS[:12], (capture, attempt, role, host, boot, domain, segment, origin, mono, utc,
                                               "host UTC, alignment unverified", kind)))
                 row.update(name=name, category=category, source_file=source, source_line=line, ring=ring, sequence=sequence,
                            **{key: fields.get(key) for key in ("frame", "slot", "rnti", "sync_epoch")}, fields=fields, metrics=metrics)
                 json_dst.write(packed(row) + "\n")
-                writer.writerow(dict(row, fields=fields_json, metrics=metrics_json))
+                writer.writerow(dict(row, fields=packed(fields), metrics=packed(metrics)))
                 event_count += 1
                 for metric, value, unit, entity in metrics:
-                    series = packed([capture, role, host, metric, entity])
+                    # MCS snapshots share a bounded direction series; RNTI/cell/
+                    # lifetime remain in each point rather than being dropped by
+                    # a per-series entity limit.
+                    series = packed([capture, role, host, metric, "" if unit == "MCS index" else entity])
                     family = packed([capture, role, host, metric])
                     self.db.execute("INSERT INTO points VALUES(?,?,?,?,?)", (series, family, unit, event_id, value))
                 key = (capture, attempt, domain, segment)
@@ -508,10 +755,12 @@ class Report:
                         state["seen"].add(milestone)
                         recovery_count += 1
         self.db.execute("CREATE INDEX point_series ON points(series,event_id)")
+        self.db.execute("DROP TABLE rate_state")
         self.db.commit()
         return event_count, recovery_count
 
     def plots(self) -> tuple[list, int]:
+        self.check_space()
         result = []
         total = self.db.execute("SELECT COUNT(*) FROM (SELECT series FROM points GROUP BY series)").fetchone()[0]
         minima = dict(self.db.execute("SELECT domain,MIN(mono) FROM events WHERE mono IS NOT NULL GROUP BY domain"))
@@ -520,121 +769,200 @@ class Report:
         groups = self.db.execute(
             "SELECT series,unit,n FROM (SELECT series,family,unit,COUNT(*) AS n,"
             "ROW_NUMBER() OVER (PARTITION BY family ORDER BY COUNT(*) DESC,series) AS entity_rank "
-            "FROM points GROUP BY series,family,unit) ORDER BY entity_rank,family,series LIMIT ?",
+            "FROM points GROUP BY series,family,unit) ORDER BY unit!='MCS index',entity_rank,family,series LIMIT ?",
             (self.max_plot_series,))
         for series, unit, count in groups:
-            stride = max(1, math.ceil((count - 1) / (self.max_plot_points - 1)))
+            self.check_space()
+            point_limit = MCS_DISPLAY_LIMIT if unit == "MCS index" else self.max_plot_points
+            stride = max(1, math.ceil((count - 1) / (point_limit - 1)))
             points = []
-            query = ("SELECT mono,utc,value,domain,segment,attempt,source,line,name FROM (SELECT e.mono,e.utc,p.value,"
-                     "e.domain,e.segment,e.attempt,e.source,e.line,e.name,ROW_NUMBER() OVER (ORDER BY e.domain,e.mono,e.id) AS n "
+            query = ("SELECT mono,utc,value,domain,segment,attempt,source,line,name,fields FROM (SELECT e.mono,e.utc,p.value,"
+                     "e.domain,e.segment,e.attempt,e.source,e.line,e.name,e.fields,ROW_NUMBER() OVER (ORDER BY e.domain,e.mono,e.id) AS n "
                      "FROM points p JOIN events e ON e.id=p.event_id WHERE p.series=?) WHERE (n-1)%?=0 OR n=? ORDER BY n")
-            for mono, utc, value, domain, segment, attempt, source, line, name in self.db.execute(query, (series, stride, count)):
+            for mono, utc, value, domain, segment, attempt, source, line, name, fields_json in self.db.execute(query, (series, stride, count)):
+                fields = json.loads(fields_json)
+                context = [domain, segment, attempt, fields.get("module"), fields.get("cell"), fields.get("rnti"),
+                           fields.get("context_generation"), fields.get("counter_context_epoch")]
+                provenance = str(Path(source).name) + ":" + str(line) + " " + name
+                provenance += "; " + ", ".join(f"{key}={fields[key]}" for key in
+                    ("rnti", "cell", "module", "context_generation", "sync_epoch", "frame", "slot", "preamble_index", "channel_code",
+                     "dl_harq_max_attempts", "ul_harq_max_attempts") if key in fields)
+                if "mac_rate_interval" in fields:
+                    provenance += "; interval " + packed(fields["mac_rate_interval"])
                 points.append([None if mono is None else (mono - minima[domain]) / 1e9,
-                               None if utc is None else utc / 1e6, value, packed([domain, segment, attempt]),
-                               str(Path(source).name) + ":" + str(line) + " " + name])
+                               None if utc is None else utc / 1e6, value, packed(context), provenance])
+            nonzero = self.db.execute("SELECT COUNT(*) FROM points WHERE series=? AND value!=0", (series,)).fetchone()[0]
+            if unit == "MCS index" and stride > 1:
+                self.warnings["mcs_display_limit_reached_full_export_required"] += 1
             result.append(dict(label=" / ".join(str(v) for v in json.loads(series) if v), unit=unit,
-                               source_points=count, plotted_points=len(points), sampling="uniform index with first/last",
+                               identity=json.loads(series), source_points=count, plotted_points=len(points),
+                               nonzero_source_points=nonzero, nonzero_plotted_points=sum(p[2] != 0 for p in points),
+                               sampling="all recorded observations" if stride == 1 else "uniform index with first/last; omissions explicit",
                                points=points))
         return result, max(0, total - len(result))
+
+    def display_metadata(self) -> dict:
+        anchors = {}
+        for domain, minimum in self.db.execute("SELECT domain,MIN(mono) FROM events WHERE mono IS NOT NULL GROUP BY domain"):
+            row = self.db.execute("SELECT mono,utc FROM events WHERE domain=? AND mono IS NOT NULL AND utc IS NOT NULL "
+                                  "ORDER BY mono,id LIMIT 1", (domain,)).fetchone()
+            anchors[domain] = {"utc_ms": (row[1] - row[0] + minimum) / 1e6 if row else None}
+        utc = self.db.execute("SELECT MIN(utc) FROM events WHERE utc IS NOT NULL").fetchone()[0]
+        mapped = [value["utc_ms"] for value in anchors.values() if value["utc_ms"] is not None]
+        return {"domain_anchors": anchors, "recording_start_utc_ms": min(mapped) if mapped else utc / 1e6 if utc is not None else None,
+                "scenario_start_utc_ms": None, "scenario_duration_seconds": None,
+                "time_alignment": "Monotonic within each domain; initial cross-domain offsets use unverified host UTC.",
+                "mac_rate_policy": "Same attempt/domain/clock segment/cell/module/RNTI/context, nondecreasing counters, 0 < interval <= 2 s. "
+                                   "Legacy captures without lifetime generations cannot prove same-RNTI continuity.",
+                "mcs_display_limit_per_direction": MCS_DISPLAY_LIMIT,
+                "unavailable_metrics": ["Calibrated RSSI", "RSRQ", "RI", "PMI"],
+                "clock_mapping_unavailable_domains": [key for key, value in anchors.items() if value["utc_ms"] is None]}
 
     def close(self) -> None:
         self.db.close()
 
 
 
+def configuration_cards(metadata: dict) -> str:
+    configurations = [row["recorded_configuration"] for row in metadata.get("inputs", []) if "recorded_configuration" in row]
+
+    def frequency(value: Any) -> str:
+        return f"{value:.3f} MHz" if number(value) else "Unavailable"
+
+    def display(values: dict) -> list[str]:
+        def scalar(key: str) -> str:
+            value = values.get(key)
+            return str(value) if value is not None else "Unavailable"
+
+        def bandwidth(direction: str) -> str:
+            prbs, scs = (values.get(direction + key) for key in ("_carrierBandwidth", "_subcarrierSpacing"))
+            if type(prbs) is not int or prbs <= 0:
+                return "Unavailable"
+            band = values.get(direction + "_frequencyBand")
+            table = FR1_PRBS.get(scs, ()) if type(band) is int and band < 257 else ()
+            width = FR1_MHZ[table.index(prbs)] if prbs in table else None
+            return (f"{width} MHz / " if width is not None else "Channel Width Unavailable / ") + f"{prbs} PRBs"
+
+        def spacing(direction: str) -> str:
+            value = values.get(direction + "_subcarrierSpacing")
+            return f"{15 * 2 ** value} kHz" if type(value) is int and 0 <= value <= 4 else "Unavailable"
+
+        band = values.get("dl_frequencyBand")
+        band_name = "n" + str(band) if band is not None else "Band Unavailable"
+        return [band_name + " / " + scalar("duplex"), bandwidth("dl"), bandwidth("ul"),
+                "DL: " + spacing("dl") + " / UL: " + spacing("ul"),
+                frequency(values.get("dl_center_mhz")), frequency(values.get("ul_center_mhz")),
+                frequency(values.get("ssb_reference_mhz")), frequency(values.get("dl_point_a_mhz")),
+                frequency(values.get("ul_point_a_mhz")), scalar("gnb_ports"), scalar("gnb_rf"), scalar("ue_rf"),
+                scalar("duplex_timing"), "DL: " + scalar("dl_harq_round_max") + " / UL: " + scalar("ul_harq_round_max")]
+
+    labels = ["Frequency Band and Duplex", "DL Channel Bandwidth", "UL Channel Bandwidth", "Subcarrier Spacing",
+              "DL Centre Frequency", "UL Centre Frequency", "SSB Reference Frequency", "DL Point A Frequency",
+              "UL Point A Frequency", "gNB Antenna Ports", "Active gNB RF Channels", "Active UE RF Channels",
+              "Duplex Timing", "HARQ Attempt Limit"]
+    variants = [display(row["values"]) for row in configurations]
+    cards = []
+    for index, label in enumerate(labels):
+        values = sorted({row[index] for row in variants if row[index] != "Unavailable"})
+        # A UE capture without the gNB's config is absence, not a conflicting value.
+        values = [value for value in values if value not in ("Band Unavailable / Unavailable",
+                  "DL: Unavailable / UL: Unavailable")]
+        # A partial observation adds no variant when its known parts already
+        # occur in a complete observation from another input role.
+        values = [value for value in values if "Unavailable" not in value or not any(
+            "Unavailable" not in other and all(part.strip() in other.split(" / ")
+                for part in value.split(" / ") if "Unavailable" not in part)
+            for other in values)]
+        value = "Unavailable" if not values else " / ".join(values) if len(values) <= 3 else "Varies Across Captures (See Sources)"
+        cards.append("<div><dt>" + html.escape(label) + "</dt><dd>" + html.escape(value) + "</dd></div>")
+    return "".join(cards)
+
+
 def render_html(metadata: dict, plots: list) -> str:
-    # Escape the script delimiter as well as HTML, including untrusted metadata.
-    payload = packed(plots).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    facts = html.escape(json.dumps(metadata, indent=2, ensure_ascii=True))
+    def safe_json(value: Any) -> str:
+        # JSON text is embedded as inert data, with script delimiters escaped.
+        return packed(value).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+    template = Template(Path(__file__).with_name("timeline_report.html").read_text())
+    javascript = Path(__file__).with_name("timeline_report.js").read_text()
     scopes = "".join("<li>" + html.escape(item) + "</li>" for item in SCOPES)
-    return """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>Offline flight timeline</title><style>
-body{font:15px system-ui,sans-serif;margin:24px;max-width:1500px;color:#142534;background:#f6f8fb}
-h1,h2{color:#123b55}a{color:#075985}li{margin:.4em 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}
-.controls{position:sticky;top:0;background:#e4eef6;padding:12px;z-index:1}label{margin-right:15px}
-article{background:white;border:1px solid #cbd5e1;border-radius:8px;padding:14px;margin:15px 0}
-canvas{width:100%;height:245px;border:1px solid #e2e8f0}input[type=number]{width:130px}
-.legend{font-size:13px;color:#465869}.point{min-height:1.6em;overflow-wrap:anywhere}
-</style><h1>Offline flight timeline</h1><p>Full selected records: <a href="events.csv">CSV</a>,
-<a href="events.jsonl">JSONL</a>. <a href="recovery.csv">Observed recovery durations</a>.
-<a href="clock_segments.csv">Clock segments</a>. <a href="metadata.json">Report metadata</a>.</p>
-<ul>""" + scopes + """</ul><p>Plots contain bounded uniform samples, retaining first/last. Rare events and
-extrema may be omitted. Each series lists plotted/source counts. Full exports retain every selected row.</p>
-<div class="controls"><label>Time axis <select id="basis"><option value="1">Host UTC, alignment unverified</option>
-<option value="0">Seconds since first observation in each host boot/domain</option></select></label>
-<label>From <input id="from" type="number" step="any"></label><label>To <input id="to" type="number" step="any"></label>
-<button id="apply">Apply range</button> <button id="reset">Reset range</button></div><div id="plots"></div>
-<details><summary>Inputs, clock policy, coverage and limitations</summary><pre>""" + facts + """</pre></details>
-<script id="data" type="application/json">""" + payload + """</script><script>
-'use strict';
-const series=JSON.parse(document.getElementById('data').textContent),root=document.getElementById('plots');
-let basis=1,limits=null;
-const groups=new Map();
-for(const s of series){if(!groups.has(s.unit))groups.set(s.unit,[]);groups.get(s.unit).push(s);}
-function extent(){let lo=Infinity,hi=-Infinity;for(const s of series)for(const p of s.points){if(p[basis]!==null){lo=Math.min(lo,p[basis]);hi=Math.max(hi,p[basis]);}}return lo===Infinity?[0,1]:[lo,hi===lo?lo+1:hi];}
-function labelTime(v){return basis===1?new Date(v).toISOString():v.toFixed(3)+' s';}
-function reset(){limits=extent();document.getElementById('from').value=limits[0];document.getElementById('to').value=limits[1];draw();}
-function draw(){root.replaceChildren();for(const [unit,rows]of groups){
-const article=document.createElement('article'),title=document.createElement('h2'),legend=document.createElement('div'),canvas=document.createElement('canvas'),info=document.createElement('div');
-title.textContent=unit;legend.className='legend';info.className='point';
-legend.textContent=rows.map(s=>s.label+' ['+s.plotted_points+'/'+s.source_points+' points]').join(' | ');
-article.append(title,legend,canvas,info);root.append(article);canvas.width=Math.max(600,canvas.clientWidth*devicePixelRatio);canvas.height=245*devicePixelRatio;
-const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=70*devicePixelRatio,right=15*devicePixelRatio,top=20*devicePixelRatio,bottom=48*devicePixelRatio;
-let ymin=Infinity,ymax=-Infinity;
-for(const s of rows)for(const p of s.points)if(p[basis]!==null&&p[basis]>=limits[0]&&p[basis]<=limits[1]){ymin=Math.min(ymin,p[2]);ymax=Math.max(ymax,p[2]);}
-if(ymin===Infinity){c.font=14*devicePixelRatio+'px sans-serif';c.fillText('No sampled observations in range',pad,h/2);continue;}
-if(ymin===ymax){ymin-=1;ymax+=1;}const gap=(ymax-ymin)*.05;ymin-=gap;ymax+=gap;
-const x=v=>pad+(v-limits[0])/(limits[1]-limits[0])*(w-pad-right),y=v=>h-bottom-(v-ymin)/(ymax-ymin)*(h-top-bottom);
-c.font=11*devicePixelRatio+'px sans-serif';c.strokeStyle='#cbd5e1';c.fillStyle='#334155';c.lineWidth=devicePixelRatio;
-for(let i=0;i<=4;i++){let yy=top+(h-top-bottom)*i/4;c.beginPath();c.moveTo(pad,yy);c.lineTo(w-right,yy);c.stroke();c.fillText((ymax-(ymax-ymin)*i/4).toPrecision(4),2,yy+4);}
-c.fillText(labelTime(limits[0]),pad,h-14*devicePixelRatio);c.textAlign='right';c.fillText(labelTime(limits[1]),w-right,h-14*devicePixelRatio);c.textAlign='left';
-const hits=[];rows.forEach((s,index)=>{c.strokeStyle=c.fillStyle='hsl('+((index*137.508)%360)+' 65% 38%)';let previous=null;
-for(const p of s.points){const v=p[basis];if(v===null||v<limits[0]||v>limits[1]){previous=null;continue;}const xx=x(v),yy=y(p[2]);
-if(unit!=='event code'&&unit!=='core observation'&&previous&&previous[3]===p[3]){c.beginPath();c.moveTo(x(previous[basis]),y(previous[2]));c.lineTo(xx,yy);c.stroke();}
-c.beginPath();c.arc(xx,yy,2.2*devicePixelRatio,0,2*Math.PI);c.fill();hits.push([xx,yy,s,p]);previous=p;}});
-canvas.onmousemove=e=>{const rect=canvas.getBoundingClientRect(),xx=(e.clientX-rect.left)*canvas.width/rect.width,yy=(e.clientY-rect.top)*canvas.height/rect.height;let best=null,d=Infinity;for(const hit of hits){let z=(hit[0]-xx)**2+(hit[1]-yy)**2;if(z<d){d=z;best=hit;}}info.textContent=best&&d<1600*devicePixelRatio**2?best[2].label+' = '+best[3][2]+' '+unit+'; '+labelTime(best[3][basis])+'; '+best[3][4]:'';};
-canvas.onwheel=e=>{e.preventDefault();let center=limits[0]+(e.offsetX/canvas.clientWidth)*(limits[1]-limits[0]),factor=e.deltaY>0?1.25:.8;limits=[center+(limits[0]-center)*factor,center+(limits[1]-center)*factor];document.getElementById('from').value=limits[0];document.getElementById('to').value=limits[1];draw();};
-}}
-document.getElementById('basis').onchange=e=>{basis=Number(e.target.value);reset();};document.getElementById('reset').onclick=reset;
-document.getElementById('apply').onclick=()=>{const a=Number(document.getElementById('from').value),b=Number(document.getElementById('to').value);if(Number.isFinite(a)&&Number.isFinite(b)&&b>a){limits=[a,b];draw();}};reset();
-</script></html>"""
+    configurations = [{key: row.get(key) for key in ("capture", "attempt", "role", "recorded_configuration")}
+                      for row in metadata.get("inputs", []) if "recorded_configuration" in row]
+    return template.substitute(data=safe_json(plots), display=safe_json(metadata.get("display", {})),
+                               script=javascript, scopes=scopes, cards=configuration_cards(metadata),
+                               configurations=html.escape(json.dumps(configurations, indent=2, ensure_ascii=True)),
+                               facts=html.escape(json.dumps(metadata, indent=2, ensure_ascii=True)),
+                               omitted=metadata.get("plot_series_omitted", 0))
 
 
 def generate(inputs: list[tuple[str, Path]], output: Path, *, clock_step_ms: float = 5,
-             max_plot_points: int = 2000, max_plot_series: int = 64) -> dict:
+             max_plot_points: int = 2000, max_plot_series: int = 128, allow_nested_output: bool = False,
+             min_free_bytes: int = 512 * 1024 * 1024) -> dict:
     if not inputs:
         raise ValueError("provide at least one --gnb, --ue or --core capture")
     if not math.isfinite(clock_step_ms) or clock_step_ms <= 0 or not 2 <= max_plot_points <= 10000 or not 1 <= max_plot_series <= 256:
         raise ValueError("positive clock threshold, 2..10000 plot points and 1..256 plot series required")
+    if type(min_free_bytes) is not int or min_free_bytes < 0:
+        raise ValueError("free-space reserve must be a nonnegative integer number of bytes")
     roots = [(role, path.resolve(strict=True)) for role, path in inputs]
     if any(not path.is_dir() for _, path in roots):
         raise ValueError("capture input is not a directory")
-    output = output.resolve()
-    if any(output == path or path in output.parents for _, path in roots):
-        raise ValueError("output must be outside every input capture")
     if len({path for _, path in roots}) != len(roots):
         raise ValueError("duplicate capture input")
+    # Embedded auxiliaries belong to these local captures. Discover only the
+    # fixed auxiliary/ child of each attempt; never recurse into generated reports.
+    known = {path for _, path in roots}
+    for role, root in list(roots):
+        if role not in ("gnb", "ue"):
+            continue
+        attempts = root / "attempts"
+        runs = sorted((path for path in attempts.iterdir() if path.is_dir()), key=lambda path: path.name) if attempts.is_dir() else [root]
+        for run in runs:
+            auxiliary = run / "auxiliary"
+            if auxiliary.is_symlink() or not auxiliary.is_dir() or not any(auxiliary.glob("auxiliary-*.log")):
+                continue
+            auxiliary = auxiliary.resolve(strict=True)
+            if auxiliary not in known:
+                roots.append(("core", auxiliary))
+                known.add(auxiliary)
+    output = output.resolve()
+    for role, path in roots:
+        nested_report = allow_nested_output and role in ("gnb", "ue") and output == path / "report"
+        if (output == path or path in output.parents) and not nested_report:
+            raise ValueError("output must be outside every input capture (automatic reports allow only its direct report/ child)")
     output.mkdir(mode=0o700, parents=False, exist_ok=False)
-    report = Report(output, clock_step_ms, max_plot_points, max_plot_series)
+    report = Report(output, clock_step_ms, max_plot_points, max_plot_series, min_free_bytes)
     try:
         for ordinal, (role, path) in enumerate(roots, 1):
             report.ingest(path, role, f"{ordinal:03d}-{role}-{path.name}")
         segments = report.segment_clocks()
         count, recovery_count = report.export()
         plots, omitted = report.plots()
+        display = report.display_metadata()
+        # Missing timestamped BLER is unavailable, including legacy captures.
+        if any(role == "gnb" for role, _ in roots):
+            for direction in ("DL", "UL"):
+                if any(row["unit"] == "BLER %" and row["identity"][3] == direction + " scheduler BLER" for row in plots):
+                    continue
+                plots.append(dict(label=direction + " scheduler BLER", identity=["unavailable", "gnb", "", direction + " scheduler BLER", ""],
+                                  unit="BLER %", source_points=0, plotted_points=0, points=[],
+                                  nonzero_source_points=0, nonzero_plotted_points=0,
+                                  sampling="unavailable: no timestamped scheduler BLER observation selected"))
         metadata = {"schema_version": 1, "kind": "offline_flight_timeline", "status": "complete",
                     "inputs": report.inputs, "selected_native_event_ids": sorted(SELECTED), "normalized_rows": count,
                     "recovery_duration_rows": recovery_count, "clock_segment_count": segments,
                     "clock_step_threshold_ms": clock_step_ms, "cross_host_alignment": "unverified",
                     "cross_host_uncertainty_ns": None, "clock_segment_policy": "adjacent wall-minus-monotonic offset change",
                     "chrony_policy": "tracking observations retained in events; no calibrated uncertainty bound",
-                    "plot_family_selection": "one representative per capture/metric family before additional entities",
+                    "plot_family_selection": "MCS direction families first; then one representative per capture/metric before additional entities",
                     "plot_series": len(plots), "plot_series_omitted": omitted, "maximum_points_per_series": max_plot_points,
+                    "mcs_maximum_points_per_direction": MCS_DISPLAY_LIMIT, "display": display,
+                    "minimum_free_bytes": min_free_bytes,
                     "plot_source_points": sum(s["source_points"] for s in plots),
                     "plot_sampled_points": sum(s["plotted_points"] for s in plots),
                     "warnings": dict(report.warnings), "scope": SCOPES}
-        (output / "metadata.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=True, allow_nan=False) + "\n")
-        (output / "report.html").write_text(render_html(metadata, plots))
+        report.write_text("metadata.json", json.dumps(metadata, indent=2, ensure_ascii=True, allow_nan=False) + "\n")
+        report.write_text("report.html", render_html(metadata, plots))
     except Exception as error:
         (output / "INCOMPLETE.json").write_text(packed({"status": "incomplete", "error": str(error)}) + "\n")
         raise
@@ -652,7 +980,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True, help="new report directory outside captures; parent must exist")
     parser.add_argument("--clock-step-ms", type=float, default=5, help="offset jump threshold in milliseconds (default 5)")
     parser.add_argument("--max-plot-points", type=int, default=2000, help="sampled points/series (default 2000; full exports retained)")
-    parser.add_argument("--max-plot-series", type=int, default=64, help="plotted series (default 64; full exports retained)")
+    parser.add_argument("--max-plot-series", type=int, default=128, help="plotted series (default 128; full exports retained)")
     args = parser.parse_args()
     try:
         result = generate([("gnb", p) for p in args.gnb] + [("ue", p) for p in args.ue] + [("core", p) for p in args.core], args.output,

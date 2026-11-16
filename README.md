@@ -125,3 +125,10 @@ Your email should contain below information:
 - Known/open issues are present on [Github](https://github.com/duranta-project/openairinterface5g/issues), so keep checking.
 
 Always remember a structured email will help us understand your issues quickly.
+
+## Flight Test Branch
+
+For flight logging, core collection, packet capture, recovery, traffic and
+standalone HTML reports, start with the [flight quick guide](tools/flight_test/READMEsummary.md)
+or the [full guide](tools/flight_test/README.md). The n28 X310 flight configs and
+UE capability XML are under [targets/PROJECTS/GENERIC-NR-5GC/CONF](targets/PROJECTS/GENERIC-NR-5GC/CONF).

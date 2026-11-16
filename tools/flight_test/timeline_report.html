@@ -1,0 +1,99 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: LicenseRef-CSSL-1.0 -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flight Timeline</title><style>
+html{overflow-anchor:none;scroll-behavior:auto}
+body{font:15px system-ui,sans-serif;margin:24px;max-width:1800px;color:#142534;background:#f6f8fb}
+h1,h2{color:#123b55}h2{font-size:21px}a{color:#075985}li{margin:.4em 0}
+p{line-height:1.6}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+details{margin:8px 0}summary{cursor:pointer;font-weight:600;padding:10px 0;line-height:1.5}
+button,input{font:inherit;color:inherit}button{cursor:pointer;border:1px solid #b9cbd8;background:#edf4f8;border-radius:5px;padding:6px 12px}
+.controls{position:sticky;top:0;background:#e4eef6;padding:12px;z-index:1;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls label{display:inline-flex;gap:8px;align-items:center}.controls input[type=text]{width:220px;max-width:75vw}
+.controls input[type=checkbox]{width:18px;height:18px;accent-color:#146caa}
+article,.config-box,.reading{background:white;border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin:16px 0}
+canvas{display:block;width:100%;height:310px;border:1px solid #e2e8f0;box-sizing:border-box}
+.chart-description{font-size:14px;line-height:1.6;color:#40536a;max-width:1200px;margin:0 0 16px}
+.legend{display:flex;flex-wrap:wrap;gap:7px;font-size:13px;margin:12px 0}
+.series-toggle{font-size:13px;border-left:5px solid var(--series-color);text-align:left;max-width:100%}
+.series-toggle[aria-pressed=false]{opacity:.6;background:white;text-decoration:line-through}
+.point{min-height:3.2em;overflow-wrap:anywhere;font-size:13px;color:#43566b}
+.graph-help{border-left:3px solid #c6dbe9;padding:0 12px;margin:0 0 15px;background:#f7fafc;border-radius:4px}
+.metric-glossary{display:grid;grid-template-columns:minmax(150px,1fr) minmax(240px,3fr);gap:12px 20px;font-size:13px;line-height:1.55}
+.metric-glossary dt{font-weight:600;color:#234f70}.metric-glossary dd{margin:0}
+.row-help{padding:0 10px;border-bottom:1px solid #dce4eb}.row-help p{font-size:13px;margin-top:0}
+.bulk-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0}.bulk-controls span{font-size:13px;color:#52677a}
+.full-label{display:block;overflow-wrap:anywhere;font-size:11px;color:#52677a;margin-top:3px}
+.config-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin:0}
+.config-grid div{background:#f1f6fa;padding:12px;border-radius:6px;min-width:0;overflow-wrap:anywhere}
+.config-grid dt{font-size:12px;color:#52677a}.config-grid dd{font-size:15px;color:#123b55;font-weight:600;margin:5px 0 0}
+.scenario-controls{padding:0 12px;margin:10px 0 18px;background:#eaf0f6;border-radius:8px}
+.scenario-controls label{display:inline-flex;gap:8px;align-items:center;margin:7px 12px 7px 0;flex-wrap:wrap}
+.scenario-controls input{padding:7px;border:1px solid #aabac8;border-radius:5px;background:white;max-width:75vw}
+#scenario-start{width:280px}#scenario-duration{width:160px}
+.table-scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px;line-height:1.55}
+th,td{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid #dce4eb}th{background:#eaf1f6}
+td:first-child{min-width:100px;font-weight:600}
+@media(max-width:1050px){.config-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:650px){body{margin:10px}.config-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-glossary{display:block}.metric-glossary dt{margin-top:12px}.metric-glossary dd{margin-top:4px}.controls{position:static}}
+</style></head><body>
+<h1>Flight Timeline</h1>
+<p>Recorded radio, recovery, traffic and core observations. Elapsed time is the default; each host advances using its monotonic clock,
+with initial alignment based on unverified host UTC. Missing observations remain unavailable.</p>
+<p>Full Selected Records: <a href="events.csv">CSV</a>, <a href="events.jsonl">JSONL</a>.
+<a href="recovery.csv">Observed Recovery Durations</a>. <a href="clock_segments.csv">Clock Segments</a>.
+<a href="metadata.json">Report Metadata</a>.</p>
+<details class="reading"><summary>How to Read the Timings and Sampled Data</summary>
+<ul>$scopes</ul><p>Graphs use bounded display data. MCS includes every observation up to its separately declared limit; other curves can use uniform selection.
+Rare events and peaks can be omitted. Recording Details lists displayed, available and nonzero counts and the selection policy.
+$omitted recorded curves were omitted by the series limit. Full exports retain every selected source row and derived MAC interval.</p>
+<p>Moving over or clicking a point shows its source and context. RNTI is a temporary radio identifier, not a permanent device identity.
+Ctrl + Mouse Wheel zooms the shared range; ordinary scrolling moves the page.</p></details>
+<section class="config-box"><h2>Radio Configuration</h2>
+<p class="chart-description">Settings from each capture's saved configuration, command line and bounded startup-log scan. Unrecorded settings are unavailable; variants are retained below.</p>
+<dl class="config-grid">$cards</dl>
+<details><summary>How to Read the Configuration</summary>
+<p>PRB means Physical Resource Block. A resource grid spans PRBs × 12 × subcarrier spacing; a nominal channel also includes guard bands.
+Channel-width labels use exact supported PRB/spacing pairs from OAI's FR1 bandwidth table. Other combinations remain unavailable.
+The radio's analogue filter bandwidth and a UE's active bandwidth part are separate settings.</p>
+<p>SSB is the Synchronization Signal Block; its reference frequency identifies the synchronization block.
+Point A is the frequency reference for the common resource-block grid. Neither generally equals carrier centre frequency.
+Centre frequencies here come from startup observations. Saved config includes may be absent; recorded scalar CLI overrides take priority.</p>
+<p>Antenna ports describe signal-processing and reference-signal relationships. RF channels are active hardware streams.
+Neither proves the physical antenna-element or cable count. FDD means Frequency Division Duplex, with separate UL and DL frequencies;
+TDD means Time Division Duplex, using a time pattern. TDD slot/symbol counts are shown only when saved.</p>
+<p>HARQ means Hybrid Automatic Repeat Request. Attempt limits include the first transmission. Round 0 is the initial attempt;
+round 1 is the first retry. Use the recorded limit, which can vary by direction and capture.</p>
+</details><details><summary>Configuration Sources and Recorded Variants</summary><pre>$configurations</pre></details></section>
+<details class="reading"><summary>Metric Guide and Availability</summary>
+<div class="table-scroll"><table><thead><tr><th>Metric</th><th>Meaning and Interpretation</th><th>Availability in This Report</th></tr></thead><tbody>
+<tr><td>RSSI / dBm</td><td>Received Signal Strength Indicator includes wanted signal, interference and noise over its measurement bandwidth.</td><td>Unavailable as a calibrated curve. Digital sample levels in dBFS are a different measurement.</td></tr>
+<tr><td>RSRP / dBm</td><td>Reference Signal Received Power. Less-negative values indicate stronger reference signals; decoding also depends on noise and interference.</td><td>Shown where UE or UE-reported gNB records supply it.</td></tr>
+<tr><td>RSRQ / dB</td><td>Reference Signal Received Quality relates reference-signal power to total received power over a defined bandwidth.</td><td>Unavailable. RSRP alone cannot reconstruct it.</td></tr>
+<tr><td>PH / dB; PCMAX / dBm</td><td>Power Headroom is remaining transmit-power margin under the reporting conditions. PCMAX is the stored maximum transmit-power value.</td><td>Scheduler-normalized PH and stored PCMAX where recorded. Initialization defaults are not measured reports.</td></tr>
+<tr><td>SINR and SNR / dB</td><td>Signal-to-Interference-plus-Noise Ratio and Signal-to-Noise Ratio. Larger values generally make decoding easier.</td><td>Only recorded estimates are shown, with their channel and source labels.</td></tr>
+<tr><td>CQI</td><td>Channel Quality Indicator. Standard downlink CQI uses a configured table; OAI's raw uplink PUSCH quality code has a different scale.</td><td>The raw uplink code is labelled explicitly. Standard downlink CQI is unavailable here.</td></tr>
+<tr><td>MCS</td><td>Modulation and Coding Scheme index; index 0 is valid. Higher indices can carry more bits under suitable conditions.</td><td>Periodic scheduler states, with every observation shown up to the declared display limit. These are not every grant.</td></tr>
+<tr><td>BLER / %</td><td>Block Error Rate; the recorder captures the scheduler's smoothed estimate, held between updates.</td><td>Timestamped native samples where available. Legacy text without precise timestamps is not placed on this axis.</td></tr>
+<tr><td>DL and UL Bitrate</td><td>Received application traffic and submitted/received MAC bytes describe different layers and outcomes.</td><td>Local receiver reports are reused when recorded. MAC counter differences are labelled as submission or reception and include signalling.</td></tr>
+<tr><td>RI</td><td>Rank Indicator is the UE's preferred spatial layer count under its CSI configuration, not a physical antenna count.</td><td>Unavailable. A configured RF stream count is not an RI report.</td></tr>
+<tr><td>PMI</td><td>Precoding Matrix Indicator selects transmit weights from a configured codebook; interpretation requires the codebook and rank.</td><td>Unavailable. No indices or meanings are inferred.</td></tr>
+</tbody></table></div>
+<p>Thresholds depend on the waveform, receiver, hardware and scenario. This report does not impose universal red/green quality bands.
+Gain, MCS, RSSI, RI and PMI do not support a general higher-is-better rule. Missing metrics are not zero.</p></details>
+<div class="controls"><label><input id="show-utc" type="checkbox"> Show UTC</label>
+<label>From <input id="from" type="text" aria-label="Time range start"></label>
+<label>To <input id="to" type="text" aria-label="Time range end"></label>
+<button id="apply" type="button">Apply Range</button><button id="reset" type="button">Full Range</button></div>
+<details class="scenario-controls"><summary>Scenario Start and Duration</summary>
+<p>Enter an actual scenario UTC start and duration only if known. An unset start uses the combined recording start;
+the report does not infer when a scenario replay began. A duration changes the displayed range, not the recorded evidence.</p>
+<label>Start UTC <input id="scenario-start" type="text" placeholder="YYYY-MM-DDTHH:MM:SS.sssZ"></label>
+<label>Duration (s) <input id="scenario-duration" type="number" min="0.001" step="any" placeholder="Optional"></label>
+<button id="apply-scenario" type="button">Apply Scenario Range</button>
+<p id="scenario-status" role="status">Zero uses the recording start. The actual scenario launch time has not been supplied.</p></details>
+<div id="plots"></div>
+<details class="reading"><summary>Report Metadata, Clock Policy and Coverage</summary><pre>$facts</pre></details>
+<script id="data" type="application/json">$data</script>
+<script id="display-meta" type="application/json">$display</script>
+<script>$script</script></body></html>

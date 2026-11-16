@@ -1,29 +1,57 @@
-# OAI flight logging and recovery instrumentation
+# OAI Flight Logging and Recovery
 
-Run the normal gNB or nrUE executable from its usual build directory. Enable
-logging with a top-level setting in the existing libconfig `.conf` file:
+For the short setup and command guide, start with [READMEsummary.md](READMEsummary.md).
 
-```conf
-flight = "log";
-```
+## Quick Start and Flight Features
+
+The checked-in n28 flight examples and capability XML are in
+[`targets/PROJECTS/GENERIC-NR-5GC/CONF`](../../targets/PROJECTS/GENERIC-NR-5GC/CONF):
+
+- `gnb.n28.25prb.x310.flight.conf`
+- `nrue.n28.25prb.x310.flight.conf`
+- `uecap.n28.siso.5MHz.xml`
+
+These are the X310 SISO bench profiles: n28, 25 PRBs, DL 765.750 MHz and
+UL 710.750 MHz. Adapt the radio address/subdevice, core addresses and synthetic
+subscriber to your installation. The example subscriber must match the core.
+Use the same source commit at both ends. These profiles do not configure a
+channel emulator, and the gains are device settings rather than calibrated power.
+
+Run from the **repository root** so the example's relative `uecap_file` resolves:
 
 ```sh
-sudo ./nr-softmodem -O flightTestTakeoff1.conf
-sudo ./nr-uesoftmodem -O flightTestTakeoff1.conf
+sudo cmake_targets/ran_build/build/nr-softmodem \
+  -O targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.n28.25prb.x310.flight.conf \
+  --flight logx pcap report recovery
+sudo cmake_targets/ran_build/build/nr-uesoftmodem \
+  -O targets/PROJECTS/GENERIC-NR-5GC/CONF/nrue.n28.25prb.x310.flight.conf \
+  --flight log pcap report recovery
 ```
 
-Alternatively, enable it from the command line:
+For another launch directory, use absolute `-O` and `--uecap_file` paths.
+OAI's ordinary current-directory statistics are written in the launch directory,
+so do not launch from the configuration directory. Additional flight files go
+under the selected flight output directory.
 
-```sh
-sudo ./nr-softmodem -O flightTest.conf --flight log
-sudo ./nr-uesoftmodem -O ../../../../Configs/2026-07-23_nrue_flight_tests.conf --flight log
-```
+| Feature | Effect |
+|---|---|
+| `log` | RAN output, timestamped radio/protocol events and host observations. |
+| `logx` | `log` plus local AMF, SMF and UPF logs by default. |
+| `recovery` | Supervise and, when the documented recovery conditions require it, replace the OAI process. Requires logging. |
+| `traffic` | Own the iperf3 server/client and record delivery. Requires logging and a UE peer address. |
+| `pcap` | Logging plus bounded local packet capture with default settings. |
+| `report` | Logging plus an automatically generated offline HTML report after shutdown. |
+| `off` | Disable flight features; incompatible with other explicit flight features/collection options. |
 
-CLI values override the corresponding configuration settings. `--flight off`
-disables a configuration's `flight = "log"`. With no setting, flight logging is
-off. The feature list accepts space-separated names (`flight = "log";` in the
-file, `--flight log` on the terminal). `recovery` and `traffic` require `log` and support both UE and gNB workers. Unknown features such as
-`agc` fail before starting the radio; existing AGC behavior is unchanged.
+Feature order does not matter: `--flight logx pcap` and `--flight pcap logx`
+select the same collection. Every enabled flight run prints its summary at the
+end and saves it; no separate summary command is needed. Top-level configuration
+uses the same names, for example `flight = "logx pcap report recovery";`.
+CLI values replace corresponding configuration settings. `--flight off` disables
+an ordinary configured feature list; remove explicit core/packet options too
+when disabling their collection. With no feature or collection option, logging
+is off. Unknown feature names fail before starting the radio. AGC settings are
+separate from the flight feature list.
 
 No systemd unit or separate capture command is required. The executable reads
 these options before background processes, logging threads, or radio setup. It
@@ -197,79 +225,93 @@ iperf totals from received-byte accounting. A gap in reports is described as an
 observation gap, not asserted to be an RF outage. Read the gNB summary for continuous
 UL receiver evidence and the UE summary for continuous DL receiver evidence.
 
-## Optional core logs and packet capture
+## Core Logs and Packet Capture
 
-Core collection is opt-in and local to the host running the command. Give the
-gNB, UE and any separate core collector the same explicit experiment label with
-`--flight-run-id` or the top-level `flight-run-id` configuration key. The label
-joins records without synchronizing clocks or equating separate process attempts.
-
-For core containers on the gNB host, select their actual names:
+`--flight logx` automatically follows the local containers `oai-amf`, `oai-smf`
+and `oai-upf`. `--flight log` retains RAN-only logging. To select only AMF,
+use `--flight log --flight-core-logs amf`; this does not also collect SMF/UPF.
+These source lists are equivalent:
 
 ```sh
-sudo ./nr-softmodem -O gnb.conf --flight log \
-  --flight-run-id flight-20261114-01 \
-  --flight-core-logs docker:oai-amf,docker:oai-smf,docker:oai-upf
+--flight-core-logs amf smf upf
+--flight-core-logs amf,smf,upf
+--flight-core-logs docker:oai-amf,docker:oai-smf,docker:oai-upf
 ```
 
-The collector follows only those logs from capture start. A comma-separated
-`journal:oai-amf.service` entry selects an existing local systemd journal instead.
-Names in these examples are placeholders for the installation. Restricted
-identity queries retain container/image identity or service state and restart
-information; they do not collect container environments or authentication
-configuration. The collector never starts or restarts a core component.
+An explicit list replaces the default list, including with `logx`. Use
+`docker:ACTUAL_NAME` for differently named containers or `journal:UNIT` for a
+local systemd journal. In a `.conf` file use a string, such as
+`flight-core-logs = "amf smf upf";`. Providing any `flight-core-*` option
+also requests core collection; omitted sources use the three defaults.
+`flight-core-ip` observes a remote endpoint but cannot grant access to its logs.
 
-Packet capture requires both the actual local interface and an explicit BPF
-filter. For example, if `eno1` carries the selected N2/N3 traffic:
-
-```sh
-sudo ./nr-softmodem -O gnb.conf --flight log \
-  --flight-run-id flight-20261114-01 \
-  --flight-pcap-interface eno1 \
-  --flight-pcap-filter 'sctp port 38412 or udp port 2152'
-```
-
-Choose the interface, addresses and ports for the actual deployment. N2/N3
-capture can show selected core transport traffic; it cannot show the radio
-random-access procedure (RACH). RACH diagnosis needs the UE/gNB source events.
-
-A core on another host uses the standalone collector there, from a checkout
-containing these tools:
+Collection uses local permissions and never starts, restarts or reconfigures a
+core component. A separate core machine needs the standalone collector there:
 
 ```sh
 python3 tools/flight_test/flight_auxiliary.py \
-  --output /data/FlightTests/core --run-id flight-20261114-01 --duration 3600 \
-  --core-logs docker:oai-amf,docker:oai-smf,docker:oai-upf \
-  --pcap-interface eno1 --pcap-filter 'sctp port 38412 or udp port 2152'
+  --output /data/FlightTests/core --run-id takeoff1 --duration 3600 \
+  --core-logs amf smf upf
 ```
 
-Omit the two packet options to collect only core logs. This command uses local
-access already available to its account; it does not SSH to another host or
-elevate privileges. Docker, journalctl/systemctl and dumpcap are used only when
-requested and available. No tool or package is installed automatically. Missing
-tools, access failures, early exits and incomplete cleanup remain explicit in
-status. An unavailable auxiliary observer does not request a radio restart or
-stop the radio.
+Use the same `--flight-run-id takeoff1` on gNB/UE (and `--run-id` on a separate
+collector). It labels the experiment; it does not synchronize clocks. Missing
+containers, tools or access appear as unavailable in the capture status. They
+do not stop a working radio or cause a radio restart. No remote login or package
+installation is attempted. Local core logs are useful even when registration
+succeeds: AMF/SMF/UPF events help distinguish a radio recovery failure from
+session-context or forwarding problems.
 
-Integrated auxiliary text is redacted and shares a 64 MiB budget per attempt;
-the standalone collector has the same text budget per run. JSON Lines retain
-source kind/name, stream, shared run ID, host receipt clocks and the original
-source timestamp separately. They are under the attempt's `auxiliary/` directory
-or the standalone command's printed private run directory. Lifecycle and
-start/end identity observations record the selected source and collection
-failures. Intermediate source restarts may remain unobserved.
+### Automatic Packet Capture
 
-Packet bytes are **unredacted**. They remain in a unique private directory
-(0700), with files restricted to 0600. Defaults are a 256-byte snaplen, up to
-eight sequential files, a 64 MiB total nominal byte quota and a 3600-second
-maximum duration. Reaching the quota stops capture without overwriting earlier
-files. Packet/block boundaries and final statistics can exceed the nominal
-byte threshold; status reports actual sizes and overshoot. The existing
-free-space reserve also applies. Shutdown first sends SIGINT to finish the
-current packet file and available statistics, then uses bounded owned-group
-cleanup. Captured/received/dropped packet counts remain unavailable when the
-tool does not supply them; missing statistics never mean zero drops. Review
-text redactions, storage losses and packet sensitivity before exporting a run.
+Add `pcap`, for example `--flight logx pcap report`. Any explicit
+`flight-pcap-*` option also enables packet capture and uses defaults for the
+remaining settings. Feature order is irrelevant. The default profile captures
+on `any` (all local interfaces), with complete packets up to 262144 bytes and
+a filter for N2 (SCTP 38412), GTP-U (UDP 2152), PFCP (UDP 8805), core
+HTTP/HTTP2 (TCP 80/8080), DNS (53), iperf (5201 and an explicitly selected
+traffic port), ICMP/ICMPv6 and ARP. This was selected after a live gNB/core/UE
+capture; arbitrary application ports and custom core service ports need a
+custom filter. The `all` profile removes
+the protocol restriction:
+
+```sh
+--flight pcap --flight-pcap-profile all
+```
+
+`all` also includes radio sample-stream traffic and unrelated host traffic; it
+can fill the byte quota quickly. For a selected interface/filter, use:
+
+```sh
+--flight log --flight-pcap-interface oai-cn5g \
+  --flight-pcap-filter 'sctp port 38412 or udp port 2152 or udp port 8805'
+```
+
+An explicit filter overrides the profile filter. This captures Linux network
+packets; it does not enable OAI T-tracer or reconstruct RACH messages from N2/N3.
+Timestamped radio/protocol events provide RACH evidence. Capturing on `any` can
+observe the same packet on a bridge and a virtual interface; do not sum these
+copies as delivered traffic. Use the receiver reports for application delivery.
+
+The default byte quota is 512 MiB across eight sequential files, with a maximum
+capture duration of 3600 seconds. The capture **stops** at a quota; it does not
+overwrite earlier files. Increase `--flight-pcap-max-bytes` or
+`--flight-pcap-duration` for a longer/full capture. `--flight-pcap-files` and
+`--flight-pcap-snaplen` remain available. Packet/block boundaries and final
+statistics can exceed the nominal byte threshold, which the final status reports.
+The flight free-space reserve also applies to capture and report generation.
+Report generation checks remaining space periodically and before writing the
+final HTML; this is a best-effort reserve, not an atomic filesystem quota. Missing packet/drop statistics are
+unavailable, never silently reported as zero.
+
+Core text is redacted and has a 64 MiB budget per attempt. Original source
+timestamps and host receipt timestamps are retained separately, together with
+container/image identity and start/end state. Collection does not read container
+environments or authentication configuration. Intermediate restarts can remain
+unobserved. Packet payloads are **not redacted**; packet directories are private
+(0700), and files are 0600. Inspect sensitivity before sharing packet files.
+Auxiliary logs and capture status are under each attempt's `auxiliary/` directory.
+Shutdown finalizes packet files before stopping the remaining owned processes.
 
 ## PRACH waveform preparation and experimental gNB detection
 
@@ -285,7 +327,7 @@ The gNB keeps its existing detector by default. To test an alternative that
 does not accumulate rejected correlation peaks into the detection reference:
 
 ```sh
-sudo ./nr-softmodem -O flightTest.conf --flight log recovery --prach-normalized-detection
+sudo cmake_targets/ran_build/build/nr-softmodem -O targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.n28.25prb.x310.flight.conf --flight log recovery --prach-normalized-detection
 ```
 
 Or add the top-level setting `prach-normalized-detection = 1;` to the config.
@@ -328,9 +370,9 @@ flight = "log recovery";
 ```
 
 ```sh
-sudo ./nr-uesoftmodem -O flightTest.conf
+sudo cmake_targets/ran_build/build/nr-uesoftmodem -O targets/PROJECTS/GENERIC-NR-5GC/CONF/nrue.n28.25prb.x310.flight.conf
 # Or override the feature list on the command line:
-sudo ./nr-uesoftmodem -O flightTest.conf --flight log recovery
+sudo cmake_targets/ran_build/build/nr-uesoftmodem -O targets/PROJECTS/GENERIC-NR-5GC/CONF/nrue.n28.25prb.x310.flight.conf --flight log recovery
 ```
 
 The session supervisor keeps one worker at a time. Normal OAI cell search and RRC
@@ -526,12 +568,13 @@ strings in the `.conf` file or as their matching CLI option:
 | `flight-host-budget` / `--flight-host-budget` | `0` | Host observations byte cap; `0` means no total cap. |
 | `flight-min-free-bytes` / `--flight-min-free-bytes` | `536870912` (512 MiB) | Free-space reserve; `0` explicitly disables this guard. |
 | `flight-run-id` / `--flight-run-id` | absent | Shared experiment label for gNB, UE and separate core capture; not a clock-alignment guarantee. |
-| `flight-core-logs` / `--flight-core-logs` | absent | Comma-separated local `docker:NAME` or `journal:UNIT` log sources. |
-| `flight-pcap-interface` / `--flight-pcap-interface` | absent | Explicit local interface; requires a capture filter. |
-| `flight-pcap-filter` / `--flight-pcap-filter` | absent | Explicit BPF filter; enables packet capture only with an interface. |
-| `flight-pcap-max-bytes` / `--flight-pcap-max-bytes` | `67108864` (64 MiB) | Total nominal packet-file byte quota; boundary overhead is reported. |
+| `flight-core-logs` / `--flight-core-logs` | AMF/SMF/UPF with `logx` or core options | Exact local sources; aliases `amf smf upf`, spaces or commas, also `docker:NAME` / `journal:UNIT`. |
+| `flight-pcap-interface` / `--flight-pcap-interface` | `any` when capture enabled | Select a local interface; supplying it enables capture. |
+| `flight-pcap-filter` / `--flight-pcap-filter` | default profile | Explicit BPF filter overrides the profile and enables capture. |
+| `flight-pcap-profile` / `--flight-pcap-profile` | `default` | `default` connection/traffic protocols or `all` packets; enables capture. |
+| `flight-pcap-max-bytes` / `--flight-pcap-max-bytes` | `536870912` (512 MiB) | Total nominal packet-file byte quota; boundary overhead is reported. |
 | `flight-pcap-files` / `--flight-pcap-files` | `8` | Maximum sequential packet files; stop instead of overwriting. |
-| `flight-pcap-snaplen` / `--flight-pcap-snaplen` | `256` | Maximum captured bytes per packet. |
+| `flight-pcap-snaplen` / `--flight-pcap-snaplen` | `262144` | Maximum captured bytes per packet. |
 | `flight-pcap-duration` / `--flight-pcap-duration` | `3600` | Maximum packet-capture duration in seconds. |
 
 For example, prepare different configuration files before the take-offs:
@@ -546,7 +589,7 @@ flight-min-free-bytes = "1073741824";
 Or override only the directory on the terminal:
 
 ```sh
-sudo ./nr-uesoftmodem -O flightTest.conf --flight log --flight-output /data/FlightTests/takeoff1
+sudo cmake_targets/ran_build/build/nr-uesoftmodem -O targets/PROJECTS/GENERIC-NR-5GC/CONF/nrue.n28.25prb.x310.flight.conf --flight log --flight-output /data/FlightTests/takeoff1
 ```
 
 The default retains successive files for the whole run while space is
@@ -633,6 +676,12 @@ Its output states the 64 MiB scan budget and any truncation, malformed/partial
 lines or unavailable files. Session parents keep their status and recovery
 journal; this command takes an individual attempt.
 
+Add `report` to generate `report/report.html` automatically inside the completed
+local capture/session. It includes the local role and locally collected core
+records. The program cannot infer or read a peer capture on another host. Copy
+both captures to one analysis host for a combined report. A report-generation
+error is reported separately and does not change the OAI process exit status.
+
 For a combined offline report, `timeline.py` reads gNB and UE attempts or
 recovery-session directories and optional auxiliary core JSON Lines:
 
@@ -654,7 +703,7 @@ The output contains `events.csv`, `events.jsonl`, `recovery.csv`,
 `clock_segments.csv`, `metadata.json`, per-attempt decoded source records under
 `decoded/`, and a standalone `report.html`. The HTML groups plots by units and
 offers host-UTC and per-domain elapsed-time views. Defaults limit plots to
-2000 points per series and 64 series; `--max-plot-points` and
+2000 points per series and 128 series; `--max-plot-points` and
 `--max-plot-series` change these display limits. CSV/JSON Lines exports retain
 all selected normalized records, including fields and source-file/line
 references. Recorder sampling, losses and malformed input still limit what was

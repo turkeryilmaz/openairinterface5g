@@ -15,17 +15,22 @@
 int flight_normalize_arguments(int *argc, char **argv)
 {
   int output = 1;
-  bool seen = false;
+  bool seen_flight = false, seen_core_logs = false;
   for (int i = 1; i < *argc; ++i) {
-    if (strcmp(argv[i], "--flight") != 0) {
+    bool flight = strcmp(argv[i], "--flight") == 0;
+    bool core_logs = strcmp(argv[i], "--flight-core-logs") == 0;
+    if (!flight && !core_logs) {
       argv[output++] = argv[i];
       continue;
     }
-    if (seen || i + 1 == *argc || argv[i + 1][0] == '-') {
-      fprintf(stderr, "[FLIGHT] Use one --flight followed by log [recovery] [traffic] or off\n");
+    if ((flight ? seen_flight : seen_core_logs) || i + 1 == *argc || argv[i + 1][0] == '-') {
+      fprintf(stderr, "[FLIGHT] Use one %s followed by its space- or comma-separated values\n", argv[i]);
       return -1;
     }
-    seen = true;
+    if (flight)
+      seen_flight = true;
+    else
+      seen_core_logs = true;
     argv[output++] = argv[i];
     int end = i + 1;
     size_t length = 0;
@@ -99,10 +104,14 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   char *stall = NULL, *attempt = NULL;
   char *traffic_peer = NULL, *traffic_bind = NULL, *traffic_port = NULL, *traffic_direction = NULL, *traffic_rate = NULL;
   char *capability_xml = NULL;
-  char *run_id = NULL, *core_logs = NULL, *pcap_interface = NULL, *pcap_filter = NULL;
+  char *run_id = NULL, *core_logs = NULL, *pcap_interface = NULL, *pcap_filter = NULL, *pcap_profile = NULL;
   char *pcap_max_bytes = NULL, *pcap_files = NULL, *pcap_snaplen = NULL, *pcap_duration = NULL;
   paramdef_t options[] = {
-      STRINGPARAM("flight", "Flight features: log [recovery] [traffic], or off. CLI replaces config.\n", 0, &features, "off"),
+      STRINGPARAM("flight",
+                  "Flight features: log, logx, pcap, report, recovery, traffic, or off. CLI replaces config.\n",
+                  0,
+                  &features,
+                  "off"),
       STRINGPARAM("flight-traffic-peer", "Required UE traffic destination IP.\n", 0, &traffic_peer, NULL),
       STRINGPARAM("flight-traffic-bind", "Optional gNB traffic server bind IP.\n", 0, &traffic_bind, NULL),
       STRINGPARAM("flight-traffic-port", "iperf3 server port (default 5201).\n", 0, &traffic_port, NULL),
@@ -126,18 +135,31 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
       STRINGPARAM("flight-output", "Capture directory; default: cmake_targets/log/FlightTests/YYYY-MM-DD.\n", 0, &output, NULL),
       STRINGPARAM("flight-repo", "Optional relocated source checkout containing tools/flight_test.\n", 0, &repo_option, NULL),
       STRINGPARAM("flight-run-id", "Shared experiment label on gNB, UE and core.\n", 0, &run_id, NULL),
-      STRINGPARAM("flight-core-logs", "Optional comma-separated docker:NAME or journal:UNIT log sources.\n", 0, &core_logs, NULL),
+      STRINGPARAM("flight-core-logs",
+                  "Exact local core sources: amf smf upf, docker:NAME or journal:UNIT; space/comma separated.\n",
+                  0,
+                  &core_logs,
+                  NULL),
       STRINGPARAM("flight-pcap-interface",
-                  "Optional local packet-capture interface; requires flight-pcap-filter.\n",
+                  "Local packet-capture interface (default any when pcap enabled).\n",
                   0,
                   &pcap_interface,
                   NULL),
-      STRINGPARAM("flight-pcap-filter", "Explicit packet-capture filter for the test traffic.\n", 0, &pcap_filter, NULL),
-      STRINGPARAM("flight-pcap-max-bytes", "Packet capture total byte budget (default 67108864).\n", 0, &pcap_max_bytes, NULL),
+      STRINGPARAM("flight-pcap-filter", "Override the automatic flight packet-capture filter.\n", 0, &pcap_filter, NULL),
+      STRINGPARAM("flight-pcap-profile",
+                  "Packet filter profile: default (protocols) or all; explicit filter takes precedence.\n",
+                  0,
+                  &pcap_profile,
+                  NULL),
+      STRINGPARAM("flight-pcap-max-bytes", "Packet capture total byte budget (default 536870912).\n", 0, &pcap_max_bytes, NULL),
       STRINGPARAM("flight-pcap-files", "Maximum sequential packet files (default 8; no overwrite).\n", 0, &pcap_files, NULL),
-      STRINGPARAM("flight-pcap-snaplen", "Maximum captured bytes per packet (default 256).\n", 0, &pcap_snaplen, NULL),
+      STRINGPARAM("flight-pcap-snaplen", "Maximum captured bytes per packet (default 262144).\n", 0, &pcap_snaplen, NULL),
       STRINGPARAM("flight-pcap-duration", "Maximum packet-capture duration in seconds (default 3600).\n", 0, &pcap_duration, NULL),
-      STRINGPARAM("flight-core-ip", "Optional remote endpoint observation; not required for logging.\n", 0, &core, NULL),
+      STRINGPARAM("flight-core-ip",
+                  "Observe a core endpoint and enable default local core logs unless sources are selected.\n",
+                  0,
+                  &core,
+                  NULL),
       STRINGPARAM("flight-interface", "Observed UE interface (default oaitun_ue1).\n", 0, &interface, NULL),
       STRINGPARAM("flight-gpsd", "Optional GPSD endpoint HOST:PORT.\n", 0, &gpsd, NULL),
       STRINGPARAM("flight-min-free-bytes", "Free-space reserve in bytes (default 512 MiB).\n", 0, &min_free, NULL),
@@ -164,7 +186,7 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     if (strcmp(argv[i], "-h") == 0 || strncmp(argv[i], "--help", 6) == 0)
       return 0;
 
-  bool log = false, off = false, recovery = false, traffic = false;
+  bool log = false, logx = false, off = false, recovery = false, traffic = false, pcap = false, report = false;
   char *copy = strdup(features ? features : "off");
   if (copy == NULL)
     return -1;
@@ -172,6 +194,12 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
   for (char *feature = strtok_r(copy, " ,\t\r\n", &context); feature; feature = strtok_r(NULL, " ,\t\r\n", &context)) {
     if (strcmp(feature, "log") == 0)
       log = true;
+    else if (strcmp(feature, "logx") == 0)
+      logx = true;
+    else if (strcmp(feature, "pcap") == 0)
+      pcap = true;
+    else if (strcmp(feature, "report") == 0)
+      report = true;
     else if (strcmp(feature, "off") == 0)
       off = true;
     else if (strcmp(feature, "recovery") == 0)
@@ -179,18 +207,27 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     else if (strcmp(feature, "traffic") == 0)
       traffic = true;
     else {
-      fprintf(stderr, "[FLIGHT] Unsupported feature '%s'; supported: log, recovery, traffic, off.\n", feature);
+      fprintf(stderr, "[FLIGHT] Unsupported feature '%s'; supported: log, logx, pcap, report, recovery, traffic, off.\n", feature);
       free(copy);
       return -1;
     }
   }
   free(copy);
+  bool core_enabled = logx || core_logs != NULL || core != NULL;
+  pcap = pcap || pcap_interface != NULL || pcap_filter != NULL || pcap_profile != NULL || pcap_max_bytes != NULL
+         || pcap_files != NULL || pcap_snaplen != NULL || pcap_duration != NULL;
+  log = log || logx || pcap || report || core_enabled;
+  /* An omitted default off permits auxiliary options to opt in; explicit off must agree with them. */
+  if (off && !config_isparamset(options, 0) && log)
+    off = false;
   if (log == off || ((recovery || traffic) && !log)) {
-    fprintf(stderr, "[FLIGHT] Select log [recovery] [traffic] for UE or gNB, or off\n");
+    fprintf(stderr, "[FLIGHT] Select log/logx [pcap] [report] [recovery] [traffic], or off without enabled features/options\n");
     return -1;
   }
   if (off)
     return 0;
+  if (core_enabled && core_logs == NULL)
+    core_logs = "amf smf upf";
 
   /* Only the collector that directly launched this worker may suppress bootstrap. */
   const char *parent = getenv("_OAI_FLIGHT_CAPTURE_PARENT");
@@ -217,6 +254,7 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
                             {"--core-logs", core_logs},
                             {"--pcap-interface", pcap_interface},
                             {"--pcap-filter", pcap_filter},
+                            {"--pcap-profile", pcap_profile},
                             {"--pcap-max-bytes", pcap_max_bytes},
                             {"--pcap-files", pcap_files},
                             {"--pcap-snaplen", pcap_snaplen},
@@ -255,6 +293,10 @@ int flight_start_capture(configmodule_interface_t *cfg, int argc, char **argv, c
     command[n++] = "--recovery";
   if (traffic)
     command[n++] = "--traffic";
+  if (pcap)
+    command[n++] = "--pcap";
+  if (report)
+    command[n++] = "--report";
   command[n++] = "--working-directory";
   command[n++] = cwd;
   if (cfg->num_cfgP > 0 && cfg->cfgP[0] && realpath(cfg->cfgP[0], config)) {

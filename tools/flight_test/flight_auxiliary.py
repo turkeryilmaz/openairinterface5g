@@ -4,7 +4,7 @@
 
 Only children created here are signalled. No core/radio control, recovery, SSH,
 privilege escalation, or traffic generation is available. Packet bytes are
-sensitive and unredacted; an explicit interface, filter, and snaplen scope them.
+sensitive and unredacted; selected interface, filter, snaplen and quotas scope them.
 """
 from __future__ import annotations
 
@@ -32,6 +32,13 @@ COMMAND_PATHS = {
     "systemctl": ("/usr/bin/systemctl", "/bin/systemctl"),
     "dumpcap": ("/usr/bin/dumpcap", "/usr/sbin/dumpcap", "/bin/dumpcap"),
 }
+DEFAULT_CORE_LOGS = "amf smf upf"
+DEFAULT_PCAP_INTERFACE = "any"
+DEFAULT_PCAP_SNAPLEN = 262144
+DEFAULT_PCAP_MAX_BYTES = 512 * 1024 * 1024
+DEFAULT_PCAP_FILTER = ("sctp port 38412 or udp port 2152 or udp port 8805 or tcp port 80 or tcp port 8080 or "
+                       "port 53 or port 5201 or icmp or icmp6 or arp")
+PCAP_PROFILES = {"default": DEFAULT_PCAP_FILTER, "all": "len >= 0"}
 MAX_RAW_LINE = 65536
 DOCKER_TIME = re.compile(rb"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?(?:Z|[+-]\d\d:\d\d)) ")
 # Short key labels seen in core logs supplement OutputSanitizer's OAI markers.
@@ -60,10 +67,11 @@ class AuxiliarySettings:
     core_logs: tuple[CoreSource, ...] = ()
     pcap_interface: Optional[str] = None
     pcap_filter: Optional[str] = None
-    pcap_max_bytes: int = 64 * 1024 * 1024
+    pcap_max_bytes: int = DEFAULT_PCAP_MAX_BYTES
     pcap_files: int = 8
-    pcap_snaplen: int = 256
+    pcap_snaplen: int = DEFAULT_PCAP_SNAPLEN
     pcap_duration: float = 3600.0
+    pcap_profile: str = "default"
 
     @property
     def pcap_file_kb(self) -> int:
@@ -72,63 +80,90 @@ class AuxiliarySettings:
     def metadata(self) -> dict[str, Any]:
         return {"core_logs": [{"kind": s.kind, "name": s.name} for s in self.core_logs],
                 **{k: getattr(self, k) for k in ("pcap_interface", "pcap_filter", "pcap_max_bytes",
-                                                "pcap_files", "pcap_snaplen", "pcap_duration")},
+                                                "pcap_files", "pcap_snaplen", "pcap_duration", "pcap_profile")},
                 "pcap_file_threshold_bytes": self.pcap_file_kb * 1000,
                 "pcap_retention": "sequential_files_stop_at_quota_no_overwrite",
                 "pcap_byte_limit_scope": "nominal thresholds; packet/block/final-statistics overhead may overshoot",
-                "pcap_content": "sensitive_unredacted_packet_bytes_with_explicit_filter_and_snaplen",
+                "pcap_content": "sensitive_unredacted_packet_bytes_with_selected_filter_and_snaplen",
                 "identity_sampling": "start_and_end_only; intermediate_restarts_may_be_unobserved",
                 "automatic_recovery": False, "radio_or_core_control": False}
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     group = parser.add_argument_group("optional observer-only core logs and packet capture")
-    group.add_argument("--core-logs", default="", metavar="docker:NAME,journal:UNIT",
+    group.add_argument("--core-logs", nargs="+", metavar="SOURCE",
                        help="selected local containers/services; never starts or restarts them")
-    group.add_argument("--pcap-interface", help="explicit local Linux interface for optional dumpcap")
-    group.add_argument("--pcap-filter", help="explicit BPF filter; required with --pcap-interface")
-    group.add_argument("--pcap-max-bytes", type=int, default=64 * 1024 * 1024,
-                       help="total nominal byte quota; packet/block boundary overhead is reported")
-    group.add_argument("--pcap-files", type=int, default=8, help="1..32 sequential files, without overwriting")
-    group.add_argument("--pcap-snaplen", type=int, default=256, help="64..65535 bytes per packet")
-    group.add_argument("--pcap-duration", type=float, default=3600.0, help="1..86400 seconds maximum")
+    group.add_argument("--pcap", action="store_true", help="bounded local dumpcap with automatic defaults")
+    group.add_argument("--pcap-interface", help="local Linux interface; default any when packet capture is enabled")
+    group.add_argument("--pcap-profile", choices=tuple(PCAP_PROFILES), help="default protocol filter or all packets; quotas always apply")
+    group.add_argument("--pcap-filter", help="override profile BPF filter; default selects N2/GTP-U/PFCP/SBI/DNS/iperf/ICMP/ARP")
+    group.add_argument("--pcap-max-bytes", type=int,
+                       help="total nominal byte quota (default 512 MiB); packet/block boundary overhead is reported")
+    group.add_argument("--pcap-files", type=int, help="1..32 sequential files (default 8), without overwriting")
+    group.add_argument("--pcap-snaplen", type=int, help="64..262144 bytes per packet (default 262144)")
+    group.add_argument("--pcap-duration", type=float, help="1..86400 seconds maximum (default 3600)")
 
 
 def validate_settings(args: Any) -> Optional[AuxiliarySettings]:
-    raw_sources = getattr(args, "core_logs", "") or ""
+    raw_sources = getattr(args, "core_logs", None)
+    if raw_sources is None and getattr(args, "core_ip", None) is not None:
+        raw_sources = DEFAULT_CORE_LOGS
+    if isinstance(raw_sources, (list, tuple)):
+        raw_sources = " ".join(raw_sources)
     sources: list[CoreSource] = []
-    if len(raw_sources) > 1024:
-        raise AuxiliaryError("--core-logs is too long")
-    for value in raw_sources.split(",") if raw_sources else ():
+    if raw_sources is not None and (not raw_sources.strip() or len(raw_sources) > 1024):
+        raise AuxiliaryError("--core-logs must select nonempty sources, at most 1024 bytes")
+    for value in re.split(r"[,\s]+", raw_sources.strip()) if raw_sources else ():
+        if value in ("amf", "smf", "upf"):
+            value = "docker:oai-" + value
         kind, separator, name = value.strip().partition(":")
         pattern = r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}" if kind == "docker" else r"[A-Za-z0-9][A-Za-z0-9_.@:-]{0,127}"
         if not separator or kind not in ("docker", "journal") or re.fullmatch(pattern, name) is None:
-            raise AuxiliaryError("--core-logs requires docker:NAME or journal:UNIT without options or paths")
+            raise AuxiliaryError("--core-logs requires amf/smf/upf, docker:NAME or journal:UNIT without options or paths")
         if CoreSource(kind, name) in sources:
             raise AuxiliaryError("--core-logs contains a duplicate source")
         sources.append(CoreSource(kind, name))
     if len(sources) > 6:
         raise AuxiliaryError("--core-logs allows at most six sources")
+    pcap_names = ("pcap_interface", "pcap_filter", "pcap_profile", "pcap_max_bytes", "pcap_files", "pcap_snaplen", "pcap_duration")
+    pcap_enabled = getattr(args, "pcap", False) or any(getattr(args, name, None) is not None for name in pcap_names)
     interface = getattr(args, "pcap_interface", None)
     capture_filter = getattr(args, "pcap_filter", None)
+    profile = getattr(args, "pcap_profile", None) or "default"
+    if profile not in PCAP_PROFILES:
+        raise AuxiliaryError("--pcap-profile must be default or all")
+    if pcap_enabled:
+        interface = DEFAULT_PCAP_INTERFACE if interface is None else interface
+        if capture_filter is None:
+            capture_filter = PCAP_PROFILES[profile]
+            port = getattr(args, "traffic_port", 5201)
+            if profile == "default" and port != 5201:
+                if not isinstance(port, int) or not 1 <= port <= 65535:
+                    raise AuxiliaryError("automatic pcap filter needs a traffic port in 1..65535")
+                capture_filter += f" or port {port}"
     if interface is not None and re.fullmatch(r"[A-Za-z][A-Za-z0-9_.:-]{0,14}", interface) is None:
         raise AuxiliaryError("--pcap-interface must be a Linux name, not an option, pipe or remote source")
     if interface and (not capture_filter or len(capture_filter) > 2048 or capture_filter.startswith("-")
                       or any(ord(c) < 32 or ord(c) > 126 for c in capture_filter)):
-        raise AuxiliaryError("--pcap-interface requires an explicit printable BPF --pcap-filter, at most 2048 bytes")
+        raise AuxiliaryError("--pcap-filter must be printable BPF, at most 2048 bytes, without leading options")
     if capture_filter is not None and not interface:
         raise AuxiliaryError("--pcap-filter requires --pcap-interface")
-    maximum = getattr(args, "pcap_max_bytes", 64 * 1024 * 1024)
-    files = getattr(args, "pcap_files", 8)
-    snaplen = getattr(args, "pcap_snaplen", 256)
-    duration = getattr(args, "pcap_duration", 3600.0)
+
+    def selected(name: str, default: Any) -> Any:
+        value = getattr(args, name, None)
+        return default if value is None else value
+
+    maximum = selected("pcap_max_bytes", DEFAULT_PCAP_MAX_BYTES)
+    files = selected("pcap_files", 8)
+    snaplen = selected("pcap_snaplen", DEFAULT_PCAP_SNAPLEN)
+    duration = selected("pcap_duration", 3600.0)
     if not 1 <= files <= 32 or not files * 65536 <= maximum <= 16 * 1024**3:
         raise AuxiliaryError("pcap needs 1..32 files and a quota of 64 KiB per file through 16 GiB")
-    if not 64 <= snaplen <= 65535 or not 1 <= duration <= 86400:
-        raise AuxiliaryError("pcap snaplen must be 64..65535 and duration 1..86400 seconds")
+    if not 64 <= snaplen <= 262144 or not 1 <= duration <= 86400:
+        raise AuxiliaryError("pcap snaplen must be 64..262144 and duration 1..86400 seconds")
     if not sources and not interface:
         return None
-    return AuxiliarySettings(tuple(sources), interface, capture_filter, maximum, files, snaplen, duration)
+    return AuxiliarySettings(tuple(sources), interface, capture_filter, maximum, files, snaplen, duration, profile)
 
 
 class _RecordWriter:

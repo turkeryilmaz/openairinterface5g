@@ -922,6 +922,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", metavar="ROOT", help="default: REPO/cmake_targets/log/FlightTests/local-date")
     parser.add_argument("--run-id", help="shared experiment label for gNB, UE and a separate core collector")
     add_auxiliary_arguments(parser)
+    parser.add_argument("--report", action="store_true", help="generate a local timeline after all session collectors close")
     parser.add_argument("--console", action="store_true", help="mirror redacted console output without blocking capture")
     parser.add_argument("--working-directory", metavar="DIR", help="preserve the softmodem launch directory")
     parser.add_argument("--config", metavar="CONFIG")
@@ -1038,6 +1039,37 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
     except CaptureError as exc:
         parser.error(str(exc))
     return command
+
+
+def generate_local_report(args: argparse.Namespace, root: Path, *, collectors_closed: bool = True) -> None:
+    """Report only closed local inputs; reporting never changes the worker result."""
+    output = root / "report"
+    status: dict[str, Any] = {"schema_version": SCHEMA_VERSION, "kind": "flight_report_status",
+                            "directory": str(output), "scope": "current local role and local auxiliary inputs only"}
+    try:
+        if not collectors_closed:
+            raise CaptureError("collector shutdown is incomplete")
+        from timeline import generate
+
+        inputs = [(args.role, root)]
+        attempts = root / "attempts"
+        local_runs = sorted((p for p in attempts.iterdir() if p.is_dir()), key=lambda p: p.name) if attempts.is_dir() else [root]
+        for run in local_runs:
+            auxiliary = run / "auxiliary"
+            if auxiliary.is_dir() and any(auxiliary.glob("auxiliary-*.log")):
+                inputs.append(("core", auxiliary))
+        generate(inputs, output, allow_nested_output=True, min_free_bytes=args.min_free_bytes)
+        status["status"] = "complete"
+        print(f"[FLIGHT] local timeline report: {output / 'report.html'}", file=sys.stderr, flush=True)
+    except (Exception, KeyboardInterrupt) as exc:
+        status.update(status="failed" if collectors_closed else "unavailable", error=exc.__class__.__name__)
+        if not collectors_closed:
+            status["reason"] = "collector_shutdown_incomplete"
+        print(f"[FLIGHT] local timeline report failed: {exc.__class__.__name__}; worker exit status preserved",
+              file=sys.stderr, flush=True)
+    # Keep report failures separate from the already finalized capture and worker result.
+    if not write_json(root / "report_status.json", status, CaptureHealth()):
+        print("[FLIGHT] cannot write local report status; worker exit status preserved", file=sys.stderr, flush=True)
 
 
 class RecorderMonitor:
@@ -1206,6 +1238,8 @@ class FlightCapture:
         self.traffic: Optional[TrafficSupervisor] = None
         self.auxiliary: Optional[AuxiliarySupervisor] = None
         self.traffic_writer: Optional[BoundedRotatingWriter] = None
+        self.health_worker_closed = True
+        self.collectors_closed = False
         self.counters = {
             "launch_attempts": 0,
             "launch_failures": 0,
@@ -1339,6 +1373,12 @@ class FlightCapture:
                 traffic_writer.close()
             if self.console is not None:
                 self.console.close()
+            self.collectors_closed = (self.health_worker_closed
+                                      and (self.auxiliary is None or not self.auxiliary.snapshot().get("cleanup_failed"))
+                                      and (self.traffic is None or not self.traffic.cleanup_failed)
+                                      and (self.console is None or not self.console.thread.is_alive()))
+            if getattr(self.args, "report", False) and self.session_summary is None:
+                generate_local_report(self.args, run_dir, collectors_closed=self.collectors_closed)
 
     def _create_run_dir(self) -> Path:
         root = Path(self.args.output).resolve()
@@ -1367,7 +1407,10 @@ class FlightCapture:
             "session_id": self.session_id,
             "role": self.args.role,
             "features": ["log"] + (["recovery"] if self.recovery_enabled else []) +
-                        (["traffic"] if self.args.traffic_settings is not None else []),
+                        (["traffic"] if self.args.traffic_settings is not None else []) +
+                        (["report"] if getattr(self.args, "report", False) else []) +
+                        (["pcap"] if self.args.auxiliary_settings and self.args.auxiliary_settings.pcap_interface else []) +
+                        (["logx"] if self.args.auxiliary_settings and self.args.auxiliary_settings.core_logs else []),
             "traffic": {"enabled": self.args.traffic_settings is not None,
                         "settings": self.args.traffic_settings.metadata() if self.args.traffic_settings else None,
                         "binary": file_fingerprint(self.args.traffic_settings.executable)
@@ -1650,6 +1693,7 @@ class FlightCapture:
             native.reader.close()
             worker.stop()
             worker.join(timeout=5.0)
+            self.health_worker_closed = not worker.is_alive()
             if worker.is_alive():
                 self.health.unhealthy("health_worker_shutdown_timeout")
         stdout_sanitizer.finish()
@@ -2105,6 +2149,7 @@ class RecoverySession:
         self.final_exit_code: Optional[int] = None
         self.group_fence_state: Optional[str] = None
         self.summary = SessionSummary(time.monotonic_ns())
+        self.collectors_closed = True
 
     def _write(self, kind: str, **fields: Any) -> None:
         if self.journal is None or self.session_dir is None:
@@ -2415,6 +2460,7 @@ class RecoverySession:
                     session_summary=self.summary,
                 )
                 active_capture.run()
+                self.collectors_closed = self.collectors_closed and active_capture.collectors_closed
                 result = active_capture.last_result
                 if result is None:
                     self.final_state = "capture_failure"
@@ -2466,6 +2512,7 @@ class RecoverySession:
             self._write("recovery_session_finished", reason=exc.__class__.__name__, exit_code=125)
         finally:
             if active_capture is not None:
+                self.collectors_closed = self.collectors_closed and active_capture.collectors_closed
                 fence_state = self._fence_owned_group(active_capture)
                 self.group_fence_state = fence_state
                 if self._fence_failed(fence_state):
@@ -2488,6 +2535,9 @@ class RecoverySession:
             if self.journal is not None:
                 self.journal.close()
             self.latch.restore(previous_handlers)
+            if getattr(self.args, "report", False):
+                generate_local_report(self.args, session_dir,
+                                      collectors_closed=self.collectors_closed and self.final_state != "cleanup_failed")
         return self.final_exit_code
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

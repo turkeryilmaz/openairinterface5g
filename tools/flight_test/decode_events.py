@@ -1098,14 +1098,14 @@ def _join_radio_tx_power_evidence(powers, samples, qualities, sequence_owners):
     return samples_joined, qualities_joined
 
 
-def _write_radio_tx_power_outputs(output, powers, samples, qualities, rejects, sequence_owners):
+def _write_radio_tx_power_outputs(output, powers, samples, qualities, rejects, sequence_owners, check_space=None):
     samples_joined, qualities_joined = _join_radio_tx_power_evidence(powers, samples, qualities, sequence_owners)
-    _write_csv(output / 'radio_tx_power.csv', RADIO_TX_POWER_FIELDS, powers)
-    _write_csv(output / 'radio_tx_rejects.csv', RADIO_TX_REJECT_FIELDS, rejects)
+    _write_csv(output / 'radio_tx_power.csv', RADIO_TX_POWER_FIELDS, powers, check_space=check_space)
+    _write_csv(output / 'radio_tx_rejects.csv', RADIO_TX_REJECT_FIELDS, rejects, check_space=check_space)
     return samples_joined, qualities_joined
 
 
-def _write_radio_tx_level_output(output, events):
+def _write_radio_tx_level_output(output, events, check_space=None):
     """A whole selected buffer, not active-symbol power or proof of RF emission."""
     levels = [e for e in events if e['event'] == 47]
     groups = {}
@@ -1143,7 +1143,7 @@ def _write_radio_tx_level_output(output, events):
               'sample_start_ticks', 'sample_count', 'component_full_scale', 'sum_squared_components',
               'peak_component', 'over_range_components', 'level_valid', 'mean_power_fs', 'mean_power_dbfs',
               'peak_component_dbfs', 'state_joined', 'backend_return_samples', 'tx_readback_db', 'settings_generation']
-    _write_csv(output / 'radio_tx_level.csv', fields, rows)
+    _write_csv(output / 'radio_tx_level.csv', fields, rows, check_space=check_space)
     return len(rows), joined
 
 
@@ -1221,7 +1221,7 @@ def decode_ue_ssb_measurement(event):
     return row
 
 
-def _write_ue_ssb_measurements(output, measurements, contexts):
+def _write_ue_ssb_measurements(output, measurements, contexts, check_space=None):
     by_sequence = {}
     headers = {}
     for context in contexts:
@@ -1254,20 +1254,24 @@ def _write_ue_ssb_measurements(output, measurements, contexts):
                        'noise_checked', 'noise_current', 'pbch_checked', 'pbch_success',
                        'pbch_confirmation_required', 'context_join_status', 'context_source_file',
                        'context_source_line', 'context_sequence'] + context_fields
-    _write_csv(output / 'ue_ssb_measurements.csv', fields, measurements)
-    _write_csv(output / 'ue_ssb_measurement_contexts.csv', common + ['generation'] + context_fields, contexts)
+    _write_csv(output / 'ue_ssb_measurements.csv', fields, measurements, check_space=check_space)
+    _write_csv(output / 'ue_ssb_measurement_contexts.csv', common + ['generation'] + context_fields, contexts, check_space=check_space)
     return joined
 
 
-def _write_csv(path, fields, rows):
+def _write_csv(path, fields, rows, check_space=None):
+    if check_space is not None:
+        check_space()
     with path.open('w', newline='') as dst:
         writer = csv.DictWriter(dst, fieldnames=fields)
         writer.writeheader()
-        for row in rows:
+        for index, row in enumerate(rows):
+            if check_space is not None and index % 1024 == 0:
+                check_space()
             writer.writerow({field: row.get(field) for field in fields})
 
 
-def _write_radio_outputs(output, results, times, levels):
+def _write_radio_outputs(output, results, times, levels, check_space=None):
     results_by_key = {}
     times_by_key = {}
     for result in results:
@@ -1293,22 +1297,22 @@ def _write_radio_outputs(output, results, times, levels):
             result['begin_device_ticks'] = timing['begin_device_ticks']
             result['end_device_ticks'] = timing['end_device_ticks']
 
-    _write_csv(output / 'radio_gain.csv', RADIO_GAIN_FIELDS, results)
-    _write_csv(output / 'radio_rx_level.csv', RADIO_RX_LEVEL_FIELDS, levels)
+    _write_csv(output / 'radio_gain.csv', RADIO_GAIN_FIELDS, results, check_space=check_space)
+    _write_csv(output / 'radio_rx_level.csv', RADIO_RX_LEVEL_FIELDS, levels, check_space=check_space)
 
 
-def _write_radio_rx_decision_output(output, decisions, inputs):
+def _write_radio_rx_decision_output(output, decisions, inputs, check_space=None):
     joined = _join_radio_rx_decision_inputs(decisions, inputs)
-    _write_csv(output / 'radio_rx_decisions.csv', RADIO_RX_DECISION_FIELDS, decisions)
+    _write_csv(output / 'radio_rx_decisions.csv', RADIO_RX_DECISION_FIELDS, decisions, check_space=check_space)
     return joined
 
 
-def _write_tx_reference_outputs(output, ue_records, gnb_records):
-    _write_csv(output / 'ue_tx_power.csv', UE_TX_POWER_FIELDS, ue_records)
-    _write_csv(output / 'gnb_tx_reference.csv', GNB_TX_REFERENCE_FIELDS, gnb_records)
+def _write_tx_reference_outputs(output, ue_records, gnb_records, check_space=None):
+    _write_csv(output / 'ue_tx_power.csv', UE_TX_POWER_FIELDS, ue_records, check_space=check_space)
+    _write_csv(output / 'gnb_tx_reference.csv', GNB_TX_REFERENCE_FIELDS, gnb_records, check_space=check_space)
 
 
-def decode(directory, output):
+def decode(directory, output, check_space=None):
     paths = list(directory.glob('oai-flight-recorder-*.ndjson'))
     if not paths:
         raise ValueError('expected recorder files from one process')
@@ -1323,6 +1327,8 @@ def decode(directory, output):
     if len(set(identities)) != 1:
         raise ValueError('mixed process/capture identities; decode each run separately')
     paths.sort(key=lambda path: int(path.stem.rsplit('-', 1)[1]))
+    if check_space is not None:
+        check_space()
     output.mkdir(parents=True, exist_ok=True)
     result = dict(files=len(paths), events=0, invalid_lines=0, unsupported_schema=0,
                   async_repeat_summaries=0, async_repeated_records=0,
@@ -1368,6 +1374,8 @@ def decode(directory, output):
                     if not line:
                         break
                     number += 1
+                    if check_space is not None and number % 1024 == 1:
+                        check_space()
                     if len(line) > 4096 or not line.endswith(b'\n'):
                         result['invalid_lines'] += 1
                         while line and not line.endswith(b'\n'):
@@ -1515,12 +1523,12 @@ def decode(directory, output):
                                 result[key].append(numeric)
                     except (ValueError, KeyError, TypeError, UnicodeDecodeError):
                         result['invalid_lines'] += 1
-    _write_radio_outputs(output, radio_results, radio_times, radio_levels)
-    rx_decision_inputs_joined = _write_radio_rx_decision_output(output, radio_rx_decisions, radio_rx_decision_inputs)
-    _write_tx_reference_outputs(output, ue_tx_power_records, gnb_tx_reference_records)
+    _write_radio_outputs(output, radio_results, radio_times, radio_levels, check_space=check_space)
+    rx_decision_inputs_joined = _write_radio_rx_decision_output(output, radio_rx_decisions, radio_rx_decision_inputs, check_space=check_space)
+    _write_tx_reference_outputs(output, ue_tx_power_records, gnb_tx_reference_records, check_space=check_space)
     result['radio_tx_power_samples_joined'], result['radio_tx_power_qualities_joined'] = _write_radio_tx_power_outputs(
-        output, radio_tx_power_records, radio_tx_power_samples, radio_tx_power_qualities, radio_tx_rejects, sequence_owners)
-    result['radio_tx_levels'], result['radio_tx_level_states_joined'] = _write_radio_tx_level_output(output, radio_tx_level_events)
+        output, radio_tx_power_records, radio_tx_power_samples, radio_tx_power_qualities, radio_tx_rejects, sequence_owners, check_space=check_space)
+    result['radio_tx_levels'], result['radio_tx_level_states_joined'] = _write_radio_tx_level_output(output, radio_tx_level_events, check_space=check_space)
     result['radio_gain_results'] = len(radio_results)
     result['radio_gain_time_metadata'] = len(radio_times)
     result['radio_rx_levels'] = len(radio_levels)
@@ -1530,18 +1538,18 @@ def decode(directory, output):
     peak_fields = ['source_file', 'source_line', 'thread_ring', 'sequence', 'recorder_mono_ns', 'recorder_realtime_ns',
                    'source_code', 'source', 'generation', 'context_end_sample_ticks',
                    'retained_peak_at_current_gain_dbfs', 'reported_rx_gain_db', 'peak_release_db_per_second']
-    _write_csv(output / 'radio_rx_peak_envelope.csv', peak_fields, radio_rx_peak_envelopes)
+    _write_csv(output / 'radio_rx_peak_envelope.csv', peak_fields, radio_rx_peak_envelopes, check_space=check_space)
     result['radio_rx_peak_envelopes'] = len(radio_rx_peak_envelopes)
     control_fields = ['source_file', 'source_line', 'thread_ring', 'sequence', 'recorder_mono_ns', 'recorder_realtime_ns',
                       'channel', 'frame_slot_raw', 'frame', 'slot', 'ssb_pathloss_db', 'adjustment_state_after_db',
                       'provided_tpc_delta_db', 'configured_network_pmax_dbm']
-    _write_csv(output / 'ue_tx_control.csv', control_fields, ue_tx_control_records)
+    _write_csv(output / 'ue_tx_control.csv', control_fields, ue_tx_control_records, check_space=check_space)
     result['ue_tx_control_records'] = len(ue_tx_control_records)
     pathloss_fields = ['source_file', 'source_line', 'thread_ring', 'sequence', 'recorder_mono_ns', 'recorder_realtime_ns',
                        'available', 'ssb_index', 'rsrp_dbm', 'ssb_reference_dbm', 'ssb_pathloss_db', 'mac_state']
-    _write_csv(output / 'ue_pathloss_state.csv', pathloss_fields, ue_pathloss_state_records)
+    _write_csv(output / 'ue_pathloss_state.csv', pathloss_fields, ue_pathloss_state_records, check_space=check_space)
     result['ue_pathloss_state_records'] = len(ue_pathloss_state_records)
-    result['ue_ssb_contexts_joined'] = _write_ue_ssb_measurements(output, ue_ssb_measurements, ue_ssb_contexts)
+    result['ue_ssb_contexts_joined'] = _write_ue_ssb_measurements(output, ue_ssb_measurements, ue_ssb_contexts, check_space=check_space)
     result['ue_ssb_measurements'] = len(ue_ssb_measurements)
     result['ue_ssb_measurement_contexts'] = len(ue_ssb_contexts)
     result['ue_tx_power_requests'] = len(ue_tx_power_records)
@@ -1550,19 +1558,21 @@ def decode(directory, output):
     result['radio_tx_power_samples'] = len(radio_tx_power_samples)
     result['radio_tx_power_qualities'] = len(radio_tx_power_qualities)
     result['radio_tx_rejects'] = len(radio_tx_rejects)
-    _write_csv(output / 'relative_tx.csv', RELATIVE_TX_FIELDS, relative_tx_records)
+    _write_csv(output / 'relative_tx.csv', RELATIVE_TX_FIELDS, relative_tx_records, check_space=check_space)
     result['relative_tx_records'] = len(relative_tx_records)
     result['relative_tx_erasures'] = sum(r['record_type'] == 'erasure' for r in relative_tx_records)
-    _write_csv(output / 'gnb_prach.csv', GNB_PRACH_FIELDS, gnb_prach_records)
+    _write_csv(output / 'gnb_prach.csv', GNB_PRACH_FIELDS, gnb_prach_records, check_space=check_space)
     result['gnb_prach_records'] = len(gnb_prach_records)
     result['gnb_prach_decisions'] = sum(r['record_type'] == 'decision' for r in gnb_prach_records)
     timing_fields = ['source_file', 'source_line', 'event', 'name', 'ring', 'sequence', 'mono_ns', 'realtime_ns']
     timing_fields += sorted({field for row in timing_records for field in row} - set(timing_fields))
-    _write_csv(output / 'radio_timing.csv', timing_fields, timing_records)
+    _write_csv(output / 'radio_timing.csv', timing_fields, timing_records, check_space=check_space)
     result['radio_timing_records'] = len(timing_records)
     result['clean_footer_observed'] = len(result['footers']) == 1
     result['recorder_observations'] = {kind: list(rows.values()) for kind, rows in recorder_observations.items()}
     result['ordering'] = 'file order only; compare per-boot monotonic times, never assume continuous UTC'
+    if check_space is not None:
+        check_space()
     (output / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
     return result
 
