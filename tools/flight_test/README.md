@@ -723,8 +723,10 @@ series limit omits entire families, `omitted_families.csv` identifies each one
 with its available counts. A BLER direction excluded by the limit is labelled
 as undisplayed rather than absent from the source.
 
-Connection and Radio Events appears first. It includes recorded recovery-policy
-decisions, observed supervisor state changes, worker/backoff/cleanup lifecycle,
+Connection and Radio Events appears first and contains radio/protocol events.
+Recovery and Automatic Gain-Control Actions is the final plot, with yellow AGC
+row titles. It includes recorded recovery-policy decisions, observed supervisor
+state changes, worker/backoff/cleanup lifecycle,
 RX AGC proposals or submitted requests, gain-device results, and digital TX
 scaling results. Periodic progress snapshots and RX hold observations do not become
 action rows. Inspect a point for reasons, attempt/generation, requested gain,
@@ -735,8 +737,7 @@ and valid readbacks, with an explicit missing-metadata label.
 New recovery journals separately record stop-request outcomes: signal sent,
 observation only, worker already exited, or signalling failed. Older journals
 without this record do not establish an exact signal time or prove no stop occurred.
-Each graph has Full Screen beside Hide All/Show All. Toggles and help remain
-available there; Exit Full Screen or Escape restores the prior page position.
+Each plot has independent Hide All/Show All controls and expandable row help.
 
 Ordering uses host monotonic clock domains. A proven host boot can share a
 domain; unknown boot identity keeps attempts or core captures separate. The

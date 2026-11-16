@@ -12,12 +12,12 @@ button,input{font:inherit;color:inherit}button{cursor:pointer;border:1px solid #
 .controls label{display:inline-flex;gap:8px;align-items:center}.controls input[type=text]{width:220px;max-width:75vw}
 .controls input[type=checkbox]{width:18px;height:18px;accent-color:#146caa}
 article,.config-box,.reading{background:white;border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin:16px 0}
-article:fullscreen{box-sizing:border-box;width:100vw;height:100vh;overflow:auto;background:white;margin:0;border-radius:0}
 .point-detail:empty{display:none}.point-detail{background:#f1f6fa;padding:10px;border-radius:5px}
 canvas{display:block;width:100%;height:310px;border:1px solid #e2e8f0;box-sizing:border-box}
 .chart-description{font-size:14px;line-height:1.6;color:#40536a;max-width:1200px;margin:0 0 16px}
 .legend{display:flex;flex-wrap:wrap;gap:7px;font-size:13px;margin:12px 0}
 .series-toggle{font-size:13px;border-left:5px solid var(--series-color);text-align:left;max-width:100%}
+.agc-label{background:#fff0a6;color:#24374a;border-radius:4px}
 .series-toggle[aria-pressed=false]{opacity:.6;background:white;text-decoration:line-through}
 .point{min-height:3.2em;overflow-wrap:anywhere;font-size:13px;color:#43566b}
 .graph-help{border-left:3px solid #c6dbe9;padding:0 12px;margin:0 0 15px;background:#f7fafc;border-radius:4px}
@@ -52,10 +52,10 @@ Rare events and peaks can be omitted. Recording Details lists displayed, availab
 $omitted recorded curves were omitted by the series limit. $omitted_families distinct families have no displayed source curve;
 <a href="${export_prefix}omitted_families.csv">Omitted Families</a> identifies every such family and its available counts.
 Full exports retain every selected source row and derived MAC interval.</p>
-<p>Connection and Radio Events appears first, including recorded recovery-supervisor decisions and gain-control activity.
+<p>Connection and Radio Events appears first. Recovery and Automatic Gain-Control Actions is the final plot,
+with yellow row titles identifying gain-control activity.
 Policy observations, proposals, admitted requests and backend results have distinct labels; a request alone does not confirm actuation.
 Moving over or clicking a point shows its source, context and available action details. RNTI is a temporary radio identifier, not a permanent device identity.
-Full Screen expands one plot; its toggles and help remain available. Use Exit Full Screen or Escape to return to the prior page position.
 Ctrl + Mouse Wheel zooms the shared range; ordinary scrolling moves the page.</p></details>
 <section class="config-box"><h2>Radio Configuration</h2>
 <p class="chart-description">Settings from each capture's saved configuration, command line and bounded startup-log scan. Unrecorded settings are unavailable; variants are retained below.</p>

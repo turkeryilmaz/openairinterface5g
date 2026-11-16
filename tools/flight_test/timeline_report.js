@@ -70,48 +70,30 @@ function timeAt(point) {
   const anchor = domainAnchors.get(domain);
   return anchor && anchor.utc_ms !== null && originUtc !== null ? point[0] + (anchor.utc_ms - originUtc) / 1000 : null;
 }
+function isGainAction(s) {
+  return s.unit === 'event code' && (
+    s.identity.metric === 'UE acquisition gain adjustment result' ||
+    s.identity.metric.startsWith('RX AGC ') ||
+    /^(RX|TX) device gain result /.test(s.identity.metric) ||
+    s.identity.metric.startsWith('TX digital power '));
+}
+function displayGroup(s) {
+  if (s.unit === 'event code' && (isGainAction(s) ||
+      s.identity.metric.startsWith('Recovery ') ||
+      s.identity.metric === 'Operator stop forwarding result')) return 'control actions';
+  return s.unit;
+}
 const groups = new Map();
 for (const s of series) {
-  if (!groups.has(s.unit)) groups.set(s.unit, []);
-  groups.get(s.unit).push(s);
+  const group = displayGroup(s);
+  if (!groups.has(group)) groups.set(group, []);
+  groups.get(group).push(s);
 }
-const orderedGroups = [...groups].sort(([a],[b]) => (a==='event code'?-1:b==='event code'?1:0));
-let fullscreenState = null;
-
-async function toggleFullscreen(article, unit) {
-  const statusId='fullscreen-status-'+encodeURIComponent(unit);
-  try {
-    if(document.fullscreenElement===article) {
-      await document.exitFullscreen();
-      return;
-    }
-    if(!article.requestFullscreen) throw new Error('Full Screen is unavailable in this browser.');
-    fullscreenState={article,scrollX:window.scrollX,scrollY:window.scrollY,pending:true};
-    await article.requestFullscreen();
-    if(fullscreenState) fullscreenState.pending=false;
-    draw();
-  } catch(error) {
-    fullscreenState=null;
-    draw();
-    const status=document.getElementById(statusId);
-    if(status)status.textContent='Could not enter Full Screen: '+error.message;
-  }
-}
-document.addEventListener('fullscreenchange',()=>{
-  if(!fullscreenState)return;
-  if(document.fullscreenElement===fullscreenState.article) {
-    fullscreenState.pending=false;
-    draw();
-  } else {
-    const previous=fullscreenState;
-    fullscreenState=null;
-    draw();
-    window.scrollTo({left:previous.scrollX,top:previous.scrollY,behavior:'instant'});
-    requestAnimationFrame(()=>window.scrollTo({left:previous.scrollX,top:previous.scrollY,behavior:'instant'}));
-  }
-});
+const groupOrder = group => group === 'event code' ? -1 : group === 'control actions' ? 1 : 0;
+const orderedGroups = [...groups].sort(([a], [b]) => groupOrder(a) - groupOrder(b));
 const titles = {
   'event code': 'Connection and radio events',
+  'control actions': 'Recovery and Automatic Gain-Control Actions',
   'core observation': 'Core Network Observations',
   'dBm': 'Received and configured power',
   'dB': 'Signal quality and power adjustments',
@@ -128,6 +110,7 @@ const titles = {
   'BLER %': 'DL and UL block error rate (BLER)'
 };
 const explanations = {
+  'control actions': 'These rows describe the recovery supervisor and gain-control mechanisms. Recovery observations, decisions, worker launches and stop results are distinct stages. AGC means Automatic Gain Control; yellow row titles identify gain proposals, requests and recorded results, including acquisition gain and digital TX-power adjustments. A request does not prove that a change took effect, and a recorded gain setting is not calibrated RF power. Compare the action details with the connection events and gain curves above. Missing records do not prove that no action occurred.',
   'event code': 'Each dot marks a recorded event on its named row. Synchronization, random-access success and PDU acceptance describe different stages; none alone proves that application traffic is flowing. These are sampled records, so dots are not a complete count of separate failures.',
   'core observation': 'These points show when the collector received core-network log records. They help relate registration and session activity to radio events, but collector receipt time is not the exact time the core processed each message.',
   'dBm': 'SS-RSRP is the received synchronization-signal reference power: less-negative values mean a stronger received reference signal, but do not by themselves prove successful decoding. The gNB RSRP curve contains UE-reported measurements; PCMAX and p-Max are transmit-power limits, not received power. Hide those limits if you want to inspect only RSRP.',
@@ -144,6 +127,7 @@ const explanations = {
   '%': 'This is datagram loss reported by the traffic receiver for a reporting interval, not radio-block BLER. Lower is better for delivered application traffic, but missing receiver reports do not establish either zero loss or total loss.'
 };
 const summaries = {
+  'control actions': 'Follow recovery-supervisor decisions and gain-control activity over time. Yellow row titles identify Automatic Gain Control (AGC) actions; inspect each point to distinguish a proposal or request from its recorded result.',
   'event code': 'Follow synchronization, random access and session establishment on the same timeline. RNTI is a temporary radio identifier: it can change when the same UE reconnects.',
   'core observation': 'Registration and session messages observed at the core network. Their plotted times are collection times, not exact message-processing times.',
   'dBm': 'Compare received reference-signal power with recovery events. Less-negative RSRP means a stronger reference signal; PCMAX and p-Max are power limits and have a different meaning.',
@@ -324,15 +308,12 @@ function draw() {
   const scrollX=window.scrollX,scrollY=window.scrollY;
   const focused=document.activeElement?.id;
   const expanded=new Set([...root.querySelectorAll('details[open]')].map(d=>d.id));
-  const fullscreenArticle=fullscreenState&&(fullscreenState.pending||document.fullscreenElement===fullscreenState.article)?fullscreenState.article:null;
-  const articleScroll=fullscreenArticle?.scrollTop||0;
   root.style.minHeight=root.getBoundingClientRect().height+'px';
-  if(!fullscreenArticle)root.replaceChildren();
+  root.replaceChildren();
   for(const [unit,allRows] of orderedGroups) {
-    if(fullscreenArticle&&fullscreenArticle.dataset.unit!==unit)continue;
-    const eventPlot=unit==='event code'||unit==='core observation';
+    const eventPlot=unit==='event code'||unit==='core observation'||unit==='control actions';
     const rows=allRows.filter(s=>s.visible);
-    const article=fullscreenArticle||element('article');
+    const article=element('article');
     article.dataset.unit=unit;
     article.replaceChildren();
     article.append(element('h2',titleCase(titles[unit]||unit)));
@@ -351,7 +332,7 @@ function draw() {
       allRows.forEach((s,index)=>{
         const rowHelp=element('details',undefined,'row-help');
         rowHelp.id='row-help-'+encodeURIComponent(unit)+'-'+index;rowHelp.open=expanded.has(rowHelp.id);
-        rowHelp.append(element('summary',s.shortLabel),element('p',describeSeries(s)));
+        rowHelp.append(element('summary',s.shortLabel,isGainAction(s)?'agc-label':undefined),element('p',describeSeries(s)));
         rowHelp.append(element('p',`${s.plotted_points} displayed / ${s.source_points} available records. ${s.sampling}.`));
         guides.append(rowHelp);
       });
@@ -365,17 +346,12 @@ function draw() {
       const b=element('button',label);b.type='button';b.id='plot-'+encodeURIComponent(unit)+'-'+(value?'show':'hide');
       b.onclick=()=>{allRows.forEach(s=>s.visible=value);draw();};bulk.append(b);
     }
-    const full=element('button',document.fullscreenElement===article?'Exit Full Screen':'Full Screen');
-    full.type='button';full.id='plot-'+encodeURIComponent(unit)+'-fullscreen';
-    full.setAttribute('aria-pressed',String(document.fullscreenElement===article));
-    full.onclick=()=>toggleFullscreen(article,unit);bulk.append(full);
-    const fullscreenStatus=element('span');fullscreenStatus.id='fullscreen-status-'+encodeURIComponent(unit);
-    fullscreenStatus.setAttribute('role','status');bulk.append(fullscreenStatus);
     bulk.append(element('span',`${rows.length} of ${allRows.length} ${eventPlot?'rows':'curves'} visible`));
     article.append(bulk);
     const legend=element('div',undefined,'legend');
     for(const s of allRows) {
       const index=allRows.indexOf(s), button=element('button',s.shortLabel,'series-toggle');
+      if(isGainAction(s))button.classList.add('agc-label');
       button.type='button'; button.setAttribute('aria-pressed',String(s.visible));
       button.id='series-'+encodeURIComponent(unit)+'-'+index;
       button.style.setProperty('--series-color',palette[index%palette.length]);
@@ -401,11 +377,10 @@ function draw() {
     }
     if(eventPlot){const choice=element('details',undefined,'event-choices');choice.id='choices-'+encodeURIComponent(unit);choice.open=expanded.has(choice.id);choice.append(element('summary','Choose Event Rows'),legend);article.append(choice);}else article.append(legend);
     article.append(canvas,info,eventDetail,details);
-    // Moving a fullscreen target, even within its parent, makes Firefox exit it.
-    if(!fullscreenArticle)root.append(article);
+    root.append(article);
     const ratio=window.devicePixelRatio||1;
     const width=Math.max(260,canvas.clientWidth);
-    const height=eventPlot?Math.max(200,allRows.length*58+75):fullscreenArticle?Math.max(310,innerHeight-280):310;
+    const height=eventPlot?Math.max(200,allRows.length*58+75):310;
     canvas.style.height=height+'px';canvas.width=width*ratio;canvas.height=height*ratio;
     const c=canvas.getContext('2d');c.scale(ratio,ratio);
     const pad=eventPlot?Math.min(350,width*0.47):72, right=18, top=26, bottom=57;
@@ -456,7 +431,14 @@ function draw() {
       if(eventPlot) {
         c.fillStyle='#24374a';c.textAlign='right';
         const lines=wrap(c,s.shortLabel,pad-20);
-        lines.forEach((line,i)=>c.fillText(line,pad-12,eventY+(i-(lines.length-1)/2)*14+4));
+        lines.forEach((line,i)=>{
+          const baseline=eventY+(i-(lines.length-1)/2)*14+4;
+          if(isGainAction(s)) {
+            const textWidth=c.measureText(line).width;
+            c.fillStyle='#fff0a6';c.fillRect(pad-16-textWidth,baseline-12,textWidth+8,16);
+          }
+          c.fillStyle='#24374a';c.fillText(line,pad-12,baseline);
+        });
         c.strokeStyle='#e4eaf0';c.beginPath();c.moveTo(pad,eventY);c.lineTo(width-right,eventY);c.stroke();
       }
       c.strokeStyle=c.fillStyle=colour;let previous=null;
@@ -491,8 +473,7 @@ function draw() {
   }
   root.style.minHeight='';
   if(focused&&(focused.startsWith('series-')||focused.startsWith('plot-')))document.getElementById(focused)?.focus({preventScroll:true});
-  if(fullscreenArticle)fullscreenArticle.scrollTop=articleScroll;
-  else window.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});
+  window.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});
 }
 document.getElementById('show-utc').onchange=e=>{
   const next=e.target.checked?1:0;

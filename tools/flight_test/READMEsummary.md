@@ -86,11 +86,11 @@ Automatic reporting uses a separate process with a 1 GiB virtual-memory limit;
 if it cannot finish, regenerate manually on an analysis host with adequate memory.
 Plot limits do not cap decoding memory. Omitted Families lists measurement/event
 families absent from the display, separately from missing source observations.
-Connection and Radio Events appears first, including recorded supervisor and
-gain-control decisions/results. Inspect points for reasons and requested versus
-recorded results; a submitted request is not confirmed actuation. Use Full Screen
-beside a graph's Hide All/Show All controls, then Escape or Exit Full Screen to
-return. For a combined report beside the local gNB report, use
+Connection and Radio Events appears first. Recovery and Automatic Gain-Control
+Actions appears last, with yellow titles for AGC rows. Inspect points for reasons
+and requested versus recorded results; a submitted request is not confirmed
+actuation. Each plot has independent Hide All/Show All controls.
+For a combined report beside the local gNB report, use
 `--output GNB_CAPTURE/report`
 with both `--gnb` and `--ue`: the combined HTML is `report/report.html`, and its
 exports are under `report/combined/`. Existing combined output is never overwritten.
