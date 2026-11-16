@@ -4,6 +4,38 @@ Capture is off unless OAI_FLIGHT_RECORDER_DIR names an existing directory at log
 
 Every event has event, a–f, ring, sequence, mono_ns and realtime_ns. Sequence numbers are global across all producer rings; gaps within one ring are expected when other rings emit. Time fields are integer nanoseconds; realtime is Unix UTC epoch. Monotonic values compare only within one boot. INT64_MIN means unavailable. Ordinary stdout timestamps are receipt times; numeric timestamps are captured at the source event. File/sequence order across threads can differ from timestamp order.
 
+## Timestamped Scheduler Measurements
+
+Events 129 and 130 share the existing per-cell 640 ms scheduler snapshot cadence,
+under the existing scheduler lock, bounded to 16 UEs. The identity packs RNTI in
+bits 0–15, cell ID in 16–31 and module ID in 32–47. Event 130 precedes the same
+UE's counter records. Its generation is assigned once per UE object and is not
+reused during that MAC instance's lifetime. Combine it with the capture/attempt,
+module and cell; never treat it as a cross-host or permanent subscriber identity.
+New contexts, counter decreases and observation gaps break derived rate lines.
+Older captures have no generation and cannot prove same-RNTI continuity.
+
+Event 129 records the scheduler's existing smoothed BLER estimate, not a new
+independent measurement. The scheduler updates after at least ten radio frames
+(100 ms): 0.9 times the previous estimate plus 0.1 times first-retransmission
+count divided by initial-transmission count in that window. It retains the
+estimate when there are no initial transmissions. A snapshot may therefore
+repeat an older value; the last scheduled counts describe the last update,
+not the 640 ms plotting interval. The initialization default is unavailable
+until a statistics update includes a transmission. Invalid/non-finite estimates
+are also unavailable. Multiply the decoded fraction by 100 for percent.
+
+Events 131/132 supplement 25/26 with rounds 4–7 only when the configured maximum
+exceeds four attempts. Round zero is the initial transmission; the maximum
+counts attempts, not retransmissions. These remain cumulative counters.
+
+Event 90 (`UE_TX_CHANNEL_CONTEXT`) is emitted at PRACH waveform preparation in
+the current implementation. A point identifies a preamble, synchronization
+generation and scheduled frame/slot. It is neither a periodic connectivity
+sample nor proof of successful RF transmission. Compare it with nearby UE_RA,
+UE_SYNC and PRACH span records to understand retries; report display sampling
+can omit intermediate points even when the raw records exist.
+
 ## Detail selection and recorder health
 
 `balanced` detail selects each thread/group's first eight opportunities and then
@@ -66,6 +98,10 @@ its summary, without adding per-event loss counts again to the process footer.
 
 | ID/name | a | b | c | d | e | f |
 |---|---|---|---|---|---|---|
+|129 GNB_UE_BLER|RNTI/cell/module identity|UE context generation|DL BLER in millionths|UL BLER in millionths|DL scheduled count at last update|UL scheduled count at last update|
+|130 GNB_UE_CONTEXT|RNTI/cell/module identity|UE context generation|frame|DL maximum HARQ attempts|UL maximum HARQ attempts|reserved|
+|131 GNB_DL_HARQ_HIGH|RNTI|round 4|round 5|round 6|round 7|maximum attempts|
+|132 GNB_UL_HARQ_HIGH|RNTI|round 4|round 5|round 6|round 7|maximum attempts|
 |10 UE_SYNC|UE instance|1 success / 0 failure|HW slot offset on success|CFO Hz on success|RX sample offset on success|reserved|
 |11 UE_AGC|UE instance|requested delta dB|adjusted requested delta dB|configured gain minus offset dB|backend result|reserved|
 |12 UE_MEASUREMENTS|UE instance|SFN*1000+slot|physical cell ID|SSB index|L1 RSRP dBm|L1 SINR dB|

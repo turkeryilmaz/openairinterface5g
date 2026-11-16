@@ -180,6 +180,10 @@ typedef enum {
   FLIGHT_EVENT_UE_TA_AGGREGATE_APPLIED = 126,
   FLIGHT_EVENT_GNB_UL_MAC_REJECT = 127,
   FLIGHT_EVENT_PDCP_RX_STATE = 128,
+  FLIGHT_EVENT_GNB_UE_BLER = 129,
+  FLIGHT_EVENT_GNB_UE_CONTEXT = 130,
+  FLIGHT_EVENT_GNB_DL_HARQ_HIGH = 131,
+  FLIGHT_EVENT_GNB_UL_HARQ_HIGH = 132,
 } flight_recorder_event_t;
 
 /** Stable groups for accounting intentional reduction of routine detail. */

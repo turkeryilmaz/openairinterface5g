@@ -78,6 +78,10 @@ TIMING_LAYOUTS = {
     126: ('UE_TA_AGGREGATE_APPLIED', ('ue', 'frame_slot', 'signed_command', 'before_samples', 'after_samples', 'samples_per_subframe')),
     127: ('GNB_UL_MAC_REJECT', ('rnti', 'frame_slot', 'harq_pid', 'pdu_bytes', 'is_msg3_or_msga', 'reserved')),
     128: ('PDCP_RX_STATE', ('ue_id', 'bearer_identity', 'received_sn', 'rx_deliv', 'rx_next', 'discarded_pdus')),
+    129: ('GNB_UE_BLER', ('identity', 'ue_context', 'dl_bler_millionths', 'ul_bler_millionths', 'dl_last_scheduled', 'ul_last_scheduled')),
+    130: ('GNB_UE_CONTEXT', ('identity', 'ue_context', 'frame', 'dl_max_attempts', 'ul_max_attempts', 'reserved')),
+    131: ('GNB_DL_HARQ_HIGH', ('rnti', 'round4', 'round5', 'round6', 'round7', 'max_attempts')),
+    132: ('GNB_UL_HARQ_HIGH', ('rnti', 'round4', 'round5', 'round6', 'round7', 'max_attempts')),
 }
 NAMES.update({number: layout[0] for number, layout in TIMING_LAYOUTS.items()})
 
@@ -99,7 +103,15 @@ def decode_radio_timing(event):
     row['name'] = layout[0]
     row.update(zip(layout[1], (event[key] for key in 'abcdef')))
     # Preserve packed values alongside their interpretations and unknown bits.
-    if event['event'] == 128:
+    if event['event'] in (129, 130):
+        identity = event['a'] & UINT64_MASK
+        row.update(rnti=identity & 0xffff, cell_id=(identity >> 16) & 0xffff,
+                   module_id=(identity >> 32) & 0xffff, unknown_identity_bits=identity >> 48)
+        if event['event'] == 129:
+            for direction, field in (('dl', 'c'), ('ul', 'd')):
+                raw = event[field]
+                row[direction + '_bler'] = raw / 1000000 if 0 <= raw <= 1000000 else None
+    elif event['event'] == 128:
         row.update(rb_id=(event['b'] >> 16) & 0xffffffff, is_srb=bool(event['b'] & 2), is_gnb=bool(event['b'] & 1))
     elif event['event'] == 125:
         identity = event['a'] & UINT64_MASK

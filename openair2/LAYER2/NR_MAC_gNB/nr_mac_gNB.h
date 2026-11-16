@@ -880,6 +880,7 @@ typedef struct {
 typedef struct NR_UE_info {
   rnti_t rnti;
   uid_t uid; // unique ID of this UE
+  uint64_t flight_context_id; // diagnostic lifetime identity, assigned under sched_lock
   /// scheduling control info
   nr_csi_report_t csi_report_template[MAX_CSI_REPORTCONFIG];
   NR_UE_sched_ctrl_t UE_sched_ctrl;
@@ -1464,6 +1465,7 @@ typedef struct gNB_MAC_INST_s {
   bool print_ue_stats;
 
   pthread_mutex_t sched_lock;
+  uint64_t flight_next_context_id; // monotonically assigned diagnostic UE identities
 
   dlul_mac_stats_t mac_stats;
 

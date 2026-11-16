@@ -21,7 +21,16 @@
 #include "executables/nr-softmodem.h"
 
 #include <errno.h>
+#include <math.h>
 #include <string.h>
+
+/* The initial scheduler estimate is a policy default, not a measurement. */
+static int64_t flight_bler_millionths(const NR_bler_stats_t *stats)
+{
+  if (!stats->rounds[0] || !isfinite(stats->bler) || stats->bler < 0 || stats->bler > 1)
+    return INT64_MIN;
+  return (int64_t)(stats->bler * 1000000.0 + 0.5);
+}
 
 uint8_t nr_get_rv(int rel_round)
 {
@@ -156,6 +165,23 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, const int cell_id, frame_
         break; // bounded research capture: at most 16 UEs per cell
       const NR_mac_stats_t *stats = &ue->mac_stats;
       const NR_UE_sched_ctrl_t *ctrl = &ue->UE_sched_ctrl;
+      if (!ue->flight_context_id)
+        ue->flight_context_id = ++gNB->flight_next_context_id;
+      const int64_t identity = ue->rnti | ((int64_t)(uint16_t)cell_id << 16) | ((int64_t)(uint16_t)module_idP << 32);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UE_CONTEXT,
+                           identity,
+                           ue->flight_context_id,
+                           frame,
+                           cell->dl_bler.harq_round_max,
+                           cell->ul_bler.harq_round_max,
+                           0);
+      flight_recorder_emit(FLIGHT_EVENT_GNB_UE_BLER,
+                           identity,
+                           ue->flight_context_id,
+                           flight_bler_millionths(&ctrl->dl_bler_stats),
+                           flight_bler_millionths(&ctrl->ul_bler_stats),
+                           ctrl->dl_bler_stats.last_num_sched,
+                           ctrl->ul_bler_stats.last_num_sched);
       flight_recorder_emit(FLIGHT_EVENT_GNB_UE_BYTES,
                            cell_id,
                            ue->rnti,
@@ -191,6 +217,22 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, const int cell_id, frame_
                            stats->ul.rounds[2],
                            stats->ul.rounds[3],
                            stats->ul.total_bytes);
+      if (cell->dl_bler.harq_round_max > 4)
+        flight_recorder_emit(FLIGHT_EVENT_GNB_DL_HARQ_HIGH,
+                             ue->rnti,
+                             stats->dl.rounds[4],
+                             stats->dl.rounds[5],
+                             stats->dl.rounds[6],
+                             stats->dl.rounds[7],
+                             cell->dl_bler.harq_round_max);
+      if (cell->ul_bler.harq_round_max > 4)
+        flight_recorder_emit(FLIGHT_EVENT_GNB_UL_HARQ_HIGH,
+                             ue->rnti,
+                             stats->ul.rounds[4],
+                             stats->ul.rounds[5],
+                             stats->ul.rounds[6],
+                             stats->ul.rounds[7],
+                             cell->ul_bler.harq_round_max);
     }
   }
   start_meas(&cell->gNB_scheduler);
