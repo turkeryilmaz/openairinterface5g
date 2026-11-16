@@ -45,10 +45,13 @@ with initial alignment based on unverified host UTC. Missing observations remain
 <p>Full Selected Records: <a href="${export_prefix}events.csv">CSV</a>, <a href="${export_prefix}events.jsonl">JSONL</a>.
 <a href="${export_prefix}recovery.csv">Observed Recovery Durations</a>. <a href="${export_prefix}clock_segments.csv">Clock Segments</a>.
 <a href="${export_prefix}metadata.json">Report Metadata</a>.</p>
+<p>$clock_warning</p>
 <details class="reading"><summary>How to Read the Timings and Sampled Data</summary>
 <ul>$scopes</ul><p>Graphs use bounded display data. MCS includes every observation up to its separately declared limit; other curves can use uniform selection.
 Rare events and peaks can be omitted. Recording Details lists displayed, available and nonzero counts and the selection policy.
-$omitted recorded curves were omitted by the series limit. Full exports retain every selected source row and derived MAC interval.</p>
+$omitted recorded curves were omitted by the series limit. $omitted_families distinct families have no displayed source curve;
+<a href="${export_prefix}omitted_families.csv">Omitted Families</a> identifies every such family and its available counts.
+Full exports retain every selected source row and derived MAC interval.</p>
 <p>Connection and Radio Events appears first, including recorded recovery-supervisor decisions and gain-control activity.
 Policy observations, proposals, admitted requests and backend results have distinct labels; a request alone does not confirm actuation.
 Moving over or clicking a point shows its source, context and available action details. RNTI is a temporary radio identifier, not a permanent device identity.

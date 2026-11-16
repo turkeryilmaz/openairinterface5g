@@ -82,6 +82,10 @@ directory must be new. The graphs use elapsed recording time by default, with
 an option to show UTC. Enter an actual scenario start if you want scenario-relative
 zero; the report does not guess it. Cross-host UTC alignment is unverified.
 Expand each graph's help for metric meaning, sampling and missing-data details.
+Automatic reporting uses a separate process with a 1 GiB virtual-memory limit;
+if it cannot finish, regenerate manually on an analysis host with adequate memory.
+Plot limits do not cap decoding memory. Omitted Families lists measurement/event
+families absent from the display, separately from missing source observations.
 Connection and Radio Events appears first, including recorded supervisor and
 gain-control decisions/results. Inspect points for reasons and requested versus
 recorded results; a submitted request is not confirmed actuation. Use Full Screen

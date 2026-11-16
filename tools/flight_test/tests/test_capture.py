@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 import signal
 import socket
@@ -609,8 +610,12 @@ class CaptureFixture(unittest.TestCase):
                 pid = 12345679
 
             with patch.object(capture_module.os, "killpg", side_effect=ProcessLookupError) as killpg:
-                subject._request_recovery_stop(AbsentGroup(), "radio_rx_progress_stalled")
+                writer = io.BytesIO()
+                subject._request_recovery_stop(AbsentGroup(), "radio_rx_progress_stalled", writer)
             killpg.assert_called_once_with(AbsentGroup.pid, signal.SIGINT)
+            event = json.loads(writer.getvalue())
+            self.assertEqual(event["outcome"], "already_exited")
+            self.assertFalse(event["delivered"])
             self.assertIsNone(subject.recovery_stop_reason)
             self.assertIsNone(subject.recovery_stop_sent_ns)
             self.assertNotIn("recovery_stop_requests", subject.counters)

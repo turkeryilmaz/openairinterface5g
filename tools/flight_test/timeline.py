@@ -45,6 +45,7 @@ SCOPES = [
     "Positive local receiver intervals show observed delivery; idle time and absent reports are not failures.",
     "PDU acceptance and active DRB are separate from delivery; interface/TUN presence does not prove a working bearer.",
     "Gain readbacks are device settings, not calibrated RF power. Different units have separate plots.",
+    "Decoding retains typed records and event-sequence ownership in memory; display limits do not bound decoding memory.",
 ]
 
 # Mirror the exact PRB/channel-bandwidth pairs in nr_common.c:tables_5_3_2
@@ -404,7 +405,8 @@ def native_fields(event: dict, joined: dict | None = None) -> tuple[dict, list]:
         add("RX AGC " + action, kind, "event code", typed.get("source", ""))
     elif kind == 40 and typed.get("operation") in ("SET_RX", "SET_TX") and typed.get("request_id") != 0:
         operation = "RX" if typed["operation"] == "SET_RX" else "TX"
-        add(operation + " device gain result " + typed.get("status", "unknown"), kind, "event code")
+        qualifier = " (Request Metadata Unavailable)" if typed.get("request_id") is None else ""
+        add(operation + " device gain result " + typed.get("status", "unknown") + qualifier, kind, "event code")
     elif kind in (49, 58) and type(typed.get("applied")) is bool:
         applied = "result inconsistent" if typed["applied"] and typed.get("status") != "OK" else "applied" if typed["applied"] else "not applied"
         add("TX digital power " + applied, kind, "event code", typed.get("channel", ""))
@@ -419,6 +421,7 @@ def native_fields(event: dict, joined: dict | None = None) -> tuple[dict, list]:
 
 
 RECOVERY_EVENTS = {
+    "recovery_stop_requested": "Recovery stop request result",
     "recovery_session_started": "Recovery session started",
     "recovery_attempt_started": "Recovery attempt prepared",
     "recovery_attempt_worker_started": "Recovery worker launched",
@@ -451,7 +454,8 @@ def point_details(fields: dict) -> dict:
 
     details = scalars(fields, ("kind", "policy_phase", "policy_generation", "ordinal", "attempt_directory", "worker_pid",
         "process_group", "state", "signal", "requested_signal", "delivered_signal", "reason", "exit_code", "child_returncode",
-        "recovery_stop_reason", "group_fence_state", "remaining_ns", "planned_launch_monotonic_ns", "actual_launch_monotonic_ns"))
+        "recovery_stop_reason", "group_fence_state", "remaining_ns", "planned_launch_monotonic_ns", "actual_launch_monotonic_ns",
+        "enabled", "delivered", "outcome", "error", "errno"))
     for key, keys in {
         "decision": ("action", "reason", "not_before_ns"), "policy_decision": ("action", "reason", "not_before_ns"),
         "change": ("event", "reason", "previous_reason", "candidate_action", "qualified", "count", "cause", "policy",
@@ -872,7 +876,8 @@ class Report:
         groups = self.db.execute(
             "SELECT series,unit,n FROM (SELECT series,family,unit,COUNT(*) AS n,"
             "ROW_NUMBER() OVER (PARTITION BY family ORDER BY COUNT(*) DESC,series) AS entity_rank "
-            "FROM points GROUP BY series,family,unit) ORDER BY unit!='MCS index',entity_rank,family,series LIMIT ?",
+            "FROM points GROUP BY series,family,unit) ORDER BY unit!='MCS index',entity_rank,"
+            "unit NOT IN ('event code','core observation'),family,series LIMIT ?",
             (self.max_plot_series,))
         for series, unit, count in groups:
             self.check_space()
@@ -903,6 +908,24 @@ class Report:
                                nonzero_source_points=nonzero, nonzero_plotted_points=sum(p[2] != 0 for p in points),
                                sampling="all recorded observations" if stride == 1 else "uniform index with first/last; omissions explicit",
                                points=points))
+        families = sorted({packed(row["identity"][:4]) for row in result})
+        condition = "family NOT IN (" + ",".join("?" for _ in families) + ")" if families else "1"
+        self.omitted_families, self.omitted_family_count = [], 0
+        with (self.output / "omitted_families.csv").open("w", newline="") as destination:
+            writer = csv.writer(destination)
+            writer.writerow(["capture", "role", "host", "metric", "unit", "source_series", "source_points", "nonzero_source_points"])
+            query = ("SELECT family,unit,COUNT(DISTINCT series),COUNT(*),SUM(value!=0) FROM points WHERE "
+                     + condition + " GROUP BY family,unit ORDER BY family,unit")
+            for family, unit, series_count, points, nonzero in self.db.execute(query, families):
+                if self.omitted_family_count % 1024 == 0:
+                    self.check_space()
+                identity = json.loads(family)
+                writer.writerow(identity + [unit, series_count, points, nonzero])
+                self.omitted_family_count += 1
+                if len(self.omitted_families) < 256:
+                    self.omitted_families.append(dict(identity=identity, unit=unit, source_series=series_count, source_points=points))
+                if unit in ("event code", "core observation"):
+                    self.warnings["event_families_omitted_by_series_limit"] += 1
         return result, max(0, total - len(result))
 
     def display_metadata(self) -> dict:
@@ -916,6 +939,9 @@ class Report:
         return {"domain_anchors": anchors, "recording_start_utc_ms": min(mapped) if mapped else utc / 1e6 if utc is not None else None,
                 "scenario_start_utc_ms": None, "scenario_duration_seconds": None,
                 "time_alignment": "Monotonic within each domain; initial cross-domain offsets use unverified host UTC.",
+                "elapsed_anchor_policy": "First paired UTC/monotonic observation per domain; later wall-clock steps do not reanchor elapsed time.",
+                "clock_step_domains": [row[0] for row in self.db.execute(
+                    "SELECT domain FROM events GROUP BY domain HAVING COUNT(DISTINCT segment)>1 ORDER BY domain")],
                 "mac_rate_policy": "Same attempt/domain/clock segment/cell/module/RNTI/context, nondecreasing counters, 0 < interval <= 2 s. "
                                    "Legacy captures without lifetime generations cannot prove same-RNTI continuity.",
                 "mcs_display_limit_per_direction": MCS_DISPLAY_LIMIT,
@@ -997,6 +1023,10 @@ def render_html(metadata: dict, plots: list, export_prefix: str = "") -> str:
                                configurations=html.escape(json.dumps(configurations, indent=2, ensure_ascii=True)),
                                facts=html.escape(json.dumps(metadata, indent=2, ensure_ascii=True)),
                                export_prefix=html.escape(export_prefix, quote=True),
+                               omitted_families=metadata.get("plot_families_omitted_count", 0),
+                               clock_warning=("Detected clock steps. Elapsed time retains each domain's first UTC/monotonic pair "
+                                   "to preserve monotonic continuity; later cross-domain alignment remains unverified. "
+                                   "Show UTC displays recorded wall-clock changes." if metadata.get("display", {}).get("clock_step_domains") else ""),
                                omitted=metadata.get("plot_series_omitted", 0))
 
 
@@ -1049,22 +1079,42 @@ def generate(inputs: list[tuple[str, Path]], output: Path, *, clock_step_ms: flo
         count, recovery_count = report.export()
         plots, omitted = report.plots()
         display = report.display_metadata()
-        # Missing timestamped BLER is unavailable, including legacy captures.
-        if any(role == "gnb" for role, _ in roots):
+        # Keep empty directions attached to the actual capture, including when
+        # another gNB does have BLER or a source family was cut by the plot cap.
+        for ordinal, (role, path) in enumerate(roots, 1):
+            if role != "gnb":
+                continue
+            capture = f"{ordinal:03d}-gnb-{path.name}"
+            hosts = {row["host"] for row in report.inputs if row["capture"] == capture and row.get("host")}
+            host = next(iter(hosts)) if len(hosts) == 1 else ""
+            available = {}
+            for family, source_count, nonzero in report.db.execute(
+                "SELECT p.family,COUNT(*),SUM(p.value!=0) FROM points p JOIN events e ON e.id=p.event_id "
+                "WHERE e.capture=? AND p.unit='BLER %' GROUP BY p.family", (capture,)):
+                metric = json.loads(family)[3]
+                prior = available.get(metric, (0, 0))
+                available[metric] = (prior[0] + source_count, prior[1] + nonzero)
             for direction in ("DL", "UL"):
-                if any(row["unit"] == "BLER %" and row["identity"][3] == direction + " scheduler BLER" for row in plots):
+                metric = direction + " scheduler BLER"
+                if any(row["unit"] == "BLER %" and row["identity"][0] == capture and row["identity"][3] == metric for row in plots):
                     continue
-                plots.append(dict(label=direction + " scheduler BLER", identity=["unavailable", "gnb", "", direction + " scheduler BLER", ""],
-                                  unit="BLER %", source_points=0, plotted_points=0, points=[],
-                                  nonzero_source_points=0, nonzero_plotted_points=0,
-                                  sampling="unavailable: no timestamped scheduler BLER observation selected"))
+                source_count, nonzero = available.get(metric, (0, 0))
+                identity = [capture, "gnb", host, metric, ""]
+                plots.append(dict(label=" / ".join(value for value in identity if value), identity=identity,
+                                  unit="BLER %", source_points=source_count, plotted_points=0, points=[],
+                                  nonzero_source_points=nonzero, nonzero_plotted_points=0,
+                                  sampling="not displayed: series limit" if source_count else
+                                           "unavailable: no timestamped scheduler BLER observations in this capture"))
         metadata = {"schema_version": 1, "kind": "offline_flight_timeline", "status": "complete",
                     "inputs": report.inputs, "selected_native_event_ids": sorted(SELECTED), "normalized_rows": count,
                     "recovery_duration_rows": recovery_count, "clock_segment_count": segments,
                     "clock_step_threshold_ms": clock_step_ms, "cross_host_alignment": "unverified",
                     "cross_host_uncertainty_ns": None, "clock_segment_policy": "adjacent wall-minus-monotonic offset change",
                     "chrony_policy": "tracking observations retained in events; no calibrated uncertainty bound",
-                    "plot_family_selection": "MCS direction families first; then one representative per capture/metric before additional entities",
+                    "plot_family_selection": "MCS direction families first; then distinct families before repeated entities, events first within each rank",
+                    "plot_families_omitted_count": report.omitted_family_count,
+                    "plot_families_omitted": report.omitted_families,
+                    "plot_families_omitted_list_truncated": report.omitted_family_count > len(report.omitted_families),
                     "plot_series": len(plots), "plot_series_omitted": omitted, "maximum_points_per_series": max_plot_points,
                     "mcs_maximum_points_per_direction": MCS_DISPLAY_LIMIT, "display": display,
                     "minimum_free_bytes": min_free_bytes,

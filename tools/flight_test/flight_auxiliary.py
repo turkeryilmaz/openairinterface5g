@@ -47,8 +47,9 @@ CORE_LOG_HEADER = re.compile(
     re.IGNORECASE,
 )
 # Short key labels seen in core logs supplement OutputSanitizer's OAI markers.
-CORE_SECRET = re.compile(rb"(?i)(?:^|[^a-z0-9_])(?:k|op|opc|ki|xres(?:_star)?|res(?:_star)?|"
-                         rb"kasme|ck|ik|ak|sqn|rand|autn|msisdn|guti|5g[-_]s[-_]tmsi|authorization)[\"']?\s*[:=]")
+CORE_SECRET = re.compile(rb"(?i)(?:^|[^a-z0-9_])(?:(?:k|op|opc|ki|xres(?:_star|\*)?|res(?:_star|\*)?|"
+                         rb"kasme|ck|ik|ak|sqn|rand|autn|msisdn|guti|5g[-_]s[-_]tmsi|authorization)[\"']?\s*[:=]|"
+                         rb"(?:xres|res)(?:_star|\*)[\"']?\s*$)")
 JOURNAL_FIELDS = "MESSAGE,__REALTIME_TIMESTAMP"
 DOCKER_IDENTITY_FORMAT = ('{"id":{{json .Id}},"image":{{json .Image}},'
                           '"restart_count":{{json .RestartCount}},'
@@ -196,6 +197,12 @@ class _CoreLogRedactor:
     def accept(self, line: bytes) -> bool:
         normalized = self.redactor._normalized(line)
         header = CORE_LOG_HEADER.match(normalized)
+        payload = (normalized[header.end():] if header is not None else normalized).strip()
+        if (CORE_SECRET.search(normalized)
+                or (payload and not self.redactor._is_independent_module_diagnostic(b"[CORE] " + payload))):
+            # Dump labels and response bytes can be separated by other streams or
+            # ordinary diagnostics. Suppress hex-only rows independently of block state.
+            return self.redactor.accept(b"authentication: discarded auxiliary core key or hexadecimal row")
         if header is not None and not self.redactor._is_sensitive(line):
             # Only the redaction decision sees this prefix. OutputSanitizer keeps
             # the original safe line, including its source timestamp and module.

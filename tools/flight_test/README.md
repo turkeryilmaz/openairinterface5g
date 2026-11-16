@@ -682,6 +682,11 @@ role and locally collected core records. The program cannot infer or read a
 peer capture on another host. Copy
 both captures to one analysis host for a combined report. A report-generation
 error is reported separately and does not change the OAI process exit status.
+Automatic generation runs in a separate process with a 1 GiB virtual-memory
+limit. If that limit prevents a large report, the capture remains available;
+regenerate manually on an analysis host with adequate memory. Display limits
+reduce the HTML size, but decoding still retains typed records and event-sequence
+ownership in memory, so smaller plot limits do not cap decoder memory usage.
 
 For a combined offline report, `timeline.py` reads gNB and UE attempts or
 recovery-session directories and optional auxiliary core JSON Lines:
@@ -712,6 +717,11 @@ offers host-UTC and per-domain elapsed-time views. Defaults limit plots to
 all selected normalized records, including fields and source-file/line
 references. Recorder sampling, losses and malformed input still limit what was
 available to normalize.
+Distinct families are represented before repeated entities; event families take
+precedence within the same rank, after the existing MCS reservation. When the
+series limit omits entire families, `omitted_families.csv` identifies each one
+with its available counts. A BLER direction excluded by the limit is labelled
+as undisplayed rather than absent from the source.
 
 Connection and Radio Events appears first. It includes recorded recovery-policy
 decisions, observed supervisor state changes, worker/backoff/cleanup lifecycle,
@@ -720,6 +730,11 @@ scaling results. Periodic progress snapshots and RX hold observations do not bec
 action rows. Inspect a point for reasons, attempt/generation, requested gain,
 valid readbacks and error status. A decision/request does not prove actuation;
 digital TX scaling does not establish hardware RF gain or transmitted RF power.
+Gain results without a proven request-metadata join retain their direct status
+and valid readbacks, with an explicit missing-metadata label.
+New recovery journals separately record stop-request outcomes: signal sent,
+observation only, worker already exited, or signalling failed. Older journals
+without this record do not establish an exact signal time or prove no stop occurred.
 Each graph has Full Screen beside Hide All/Show All. Toggles and help remain
 available there; Exit Full Screen or Escape restores the prior page position.
 
@@ -727,7 +742,9 @@ Ordering uses host monotonic clock domains. A proven host boot can share a
 domain; unknown boot identity keeps attempts or core captures separate. The
 report detects changes in wall-minus-monotonic offset above
 `--clock-step-ms` (default 5 ms) and splits clock segments. A detected step is an
-observed offset change, not an estimate of oscillator accuracy. Recovery
+observed offset change, not an estimate of oscillator accuracy. The elapsed axis
+keeps the first UTC/monotonic anchor to preserve monotonic continuity. Detected
+steps are disclosed; later cross-host alignment is still unverified. Recovery
 durations are collector-observed milestones within one attempt, proven boot
 and clock segment; the report does not bridge an uncertain clock boundary.
 

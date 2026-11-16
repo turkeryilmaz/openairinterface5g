@@ -15,10 +15,12 @@ from dataclasses import dataclass
 import ipaddress
 import json
 import math
+import multiprocessing
 import os
 import pwd
 import queue
 import re
+import resource
 import selectors
 import signal
 import stat
@@ -56,6 +58,7 @@ MIN_RECORDER_BUDGET = 8192
 MAX_RECORDER_BUDGET = (1 << 63) - 1
 DEFAULT_HOST_BUDGET = 0
 DEFAULT_MIN_FREE_BYTES = 512 * MIB
+REPORT_MEMORY_BYTES = 1024 * MIB
 DEFAULT_CHUNK_BYTES = 8 * MIB
 MAX_LINE_BYTES = 8192
 READ_CHUNK_BYTES = 8192
@@ -1041,44 +1044,76 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
     return command
 
 
-def generate_local_report(args: argparse.Namespace, root: Path, *, collectors_closed: bool = True) -> None:
-    """Report only closed local inputs; reporting never changes the worker result."""
+def _local_report_worker(role: str, root: Path, min_free_bytes: int) -> None:
+    """Decode offline in a separate, memory-limited process as the capture owner."""
+    owner = capture_owner()
+    if os.geteuid() == 0 and owner[0] != 0:
+        os.setgroups([])
+        os.setgid(owner[1])
+        os.setuid(owner[0])
+    os.umask(0o077)
+    _, hard_limit = resource.getrlimit(resource.RLIMIT_AS)
+    limit = REPORT_MEMORY_BYTES if hard_limit == resource.RLIM_INFINITY else min(REPORT_MEMORY_BYTES, hard_limit)
+    resource.setrlimit(resource.RLIMIT_AS, (limit, hard_limit))
     output = root / "report"
-    html = output / ("gNBreport.html" if args.role == "gnb" else "nrUEreport.html")
+    html = output / ("gNBreport.html" if role == "gnb" else "nrUEreport.html")
     status: dict[str, Any] = {"schema_version": SCHEMA_VERSION, "kind": "flight_report_status",
                             "directory": str(output), "html": str(html),
+                            "memory_limit_bytes": limit,
                             "scope": "current local role and local auxiliary inputs only"}
     try:
-        if not collectors_closed:
-            raise CaptureError("collector shutdown is incomplete")
         from timeline import generate
 
-        inputs = [(args.role, root)]
+        inputs = [(role, root)]
         attempts = root / "attempts"
         local_runs = sorted((p for p in attempts.iterdir() if p.is_dir()), key=lambda p: p.name) if attempts.is_dir() else [root]
         for run in local_runs:
             auxiliary = run / "auxiliary"
             if auxiliary.is_dir() and any(auxiliary.glob("auxiliary-*.log")):
                 inputs.append(("core", auxiliary))
-        generate(inputs, output, allow_nested_output=True, min_free_bytes=args.min_free_bytes)
+        generate(inputs, output, allow_nested_output=True, min_free_bytes=min_free_bytes)
         (output / "report.html").rename(html)
-        # Match the capture's sudo ownership: the invoking user must be able
-        # to download the standalone report without making it world-readable.
-        fd = os.open(html, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
-        try:
-            private_fd(fd, 0o600)
-        finally:
-            os.close(fd)
-        private_directory(output, exist_ok=True)
         status["status"] = "complete"
         print(f"[FLIGHT] local timeline report: {html}", file=sys.stderr, flush=True)
     except (Exception, KeyboardInterrupt) as exc:
-        status.update(status="failed" if collectors_closed else "unavailable", error=exc.__class__.__name__)
-        if not collectors_closed:
-            status["reason"] = "collector_shutdown_incomplete"
+        status.update(status="failed", error=exc.__class__.__name__)
         print(f"[FLIGHT] local timeline report failed: {exc.__class__.__name__}; worker exit status preserved",
               file=sys.stderr, flush=True)
-    # Keep report failures separate from the already finalized capture and worker result.
+    status["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
+    if not write_json(root / "report_status.json", status, CaptureHealth()):
+        print("[FLIGHT] cannot write local report status; worker exit status preserved", file=sys.stderr, flush=True)
+
+
+def generate_local_report(args: argparse.Namespace, root: Path, *, collectors_closed: bool = True) -> None:
+    """Keep decoder exhaustion or interruption separate from the finalized worker result."""
+    status: dict[str, Any] = {"schema_version": SCHEMA_VERSION, "kind": "flight_report_status",
+                            "status": "running" if collectors_closed else "unavailable",
+                            "memory_limit_bytes": REPORT_MEMORY_BYTES}
+    if not collectors_closed:
+        status["reason"] = "collector_shutdown_incomplete"
+    if not write_json(root / "report_status.json", status, CaptureHealth()) or not collectors_closed:
+        return
+    started = time.monotonic()
+    child = multiprocessing.get_context("spawn").Process(
+        target=_local_report_worker, args=(args.role, root, args.min_free_bytes))
+    try:
+        child.start()
+        child.join()
+        status = json.loads((root / "report_status.json").read_text())
+        if child.exitcode != 0 or status.get("status") == "running":
+            status.update(status="failed", reason="report_process_failed")
+            print(f"[FLIGHT] report process exited with {child.exitcode}; worker exit status preserved",
+                  file=sys.stderr, flush=True)
+        status["report_process_exit"] = child.exitcode
+    except (Exception, KeyboardInterrupt) as exc:
+        if child.pid is not None and child.is_alive():
+            child.terminate()
+            child.join(5)
+            if child.is_alive():
+                child.kill()
+                child.join()
+        status.update(status="failed", error=exc.__class__.__name__)
+    status["elapsed_seconds"] = time.monotonic() - started
     if not write_json(root / "report_status.json", status, CaptureHealth()):
         print("[FLIGHT] cannot write local report status; worker exit status preserved", file=sys.stderr, flush=True)
 
@@ -1243,6 +1278,7 @@ class FlightCapture:
         self.session_summary = session_summary
         self.policy_decision: Optional[Decision] = None
         self._last_policy_decision: Optional[tuple[str, str, int]] = None
+        self._last_recovery_action: Optional[tuple[str, str]] = None
         self.last_result: Optional[CaptureResult] = None
         self.radio_health = RadioHealthDiagnostics()
         self.radio_health_writer: Optional[BoundedRotatingWriter] = None
@@ -1386,8 +1422,7 @@ class FlightCapture:
                 self.console.close()
             self.collectors_closed = (self.health_worker_closed
                                       and (self.auxiliary is None or not self.auxiliary.snapshot().get("cleanup_failed"))
-                                      and (self.traffic is None or not self.traffic.cleanup_failed)
-                                      and (self.console is None or not self.console.thread.is_alive()))
+                                      and (self.traffic is None or not self.traffic.cleanup_failed))
             if getattr(self.args, "report", False) and self.session_summary is None:
                 generate_local_report(self.args, run_dir, collectors_closed=self.collectors_closed)
 
@@ -1843,6 +1878,7 @@ class FlightCapture:
             writer,
             "recovery_policy_transition",
             policy_phase=phase,
+            recovery_enabled=self.recovery_enabled,
             decision={
                 "action": decision.action,
                 "reason": decision.reason,
@@ -1907,8 +1943,8 @@ class FlightCapture:
             self._write_radio_health_event(event)
         decision = self.policy.tick(time.monotonic_ns())
         self._record_policy_decision(writer, "tick", decision)
-        if allow_actions and self.recovery_enabled and decision.action == "restart":
-            self._request_recovery_stop(self.process, decision.reason)
+        if allow_actions and decision.action == "restart":
+            self._request_recovery_stop(self.process, decision.reason, writer)
         self.native_channel = {
             "sequence": channel.sequence,
             "invalid": channel.invalid,
@@ -1966,19 +2002,37 @@ class FlightCapture:
                                        delivered_signal=self.worker_stop_signal,
                                        scope="owned worker group; early default SIGTERM can omit recorder footer")
 
-    def _request_recovery_stop(self, process: subprocess.Popen[bytes], reason: str) -> None:
+    def _request_recovery_stop(self, process: subprocess.Popen[bytes], reason: str,
+                              writer: BoundedRotatingWriter) -> None:
         if self._operator_stop_signal() is not None or self.recovery_stop_sent_ns is not None:
+            return
+
+        def record(outcome: str) -> None:
+            if self._last_recovery_action == (reason, outcome):
+                return
+            self._last_recovery_action = (reason, outcome)
+            self._write_recovery_event(writer, "recovery_stop_requested", reason=reason, signal=int(signal.SIGINT),
+                                       enabled=self.recovery_enabled, delivered=outcome == "sent", outcome=outcome,
+                                       process_group=process.pid)
+
+        if not self.recovery_enabled:
+            record("observation_only")
             return
         try:
             os.killpg(process.pid, signal.SIGINT)
         except ProcessLookupError:
             # The worker group was already gone. In particular, do not make a
             # later clean leader exit appear to be a controlled recovery.
+            record("already_exited")
             return
+        except OSError:
+            record("failed")
+            raise
         self.recovery_stop_reason = reason
         self.recovery_stop_sent_ns = time.monotonic_ns()
         self.counters["recovery_stop_requests"] = self.counters.get("recovery_stop_requests", 0) + 1
         self.counters["graceful_group_signals"] += 1
+        record("sent")
 
     def _owned_group_exists(self, process: subprocess.Popen[bytes]) -> bool:
         try:
