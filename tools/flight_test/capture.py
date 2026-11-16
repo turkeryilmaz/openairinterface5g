@@ -1059,6 +1059,14 @@ def generate_local_report(args: argparse.Namespace, root: Path, *, collectors_cl
             if auxiliary.is_dir() and any(auxiliary.glob("auxiliary-*.log")):
                 inputs.append(("core", auxiliary))
         generate(inputs, output, allow_nested_output=True, min_free_bytes=args.min_free_bytes)
+        # Match the capture's sudo ownership: the invoking user must be able
+        # to download the standalone report without making it world-readable.
+        fd = os.open(output / "report.html", os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            private_fd(fd, 0o600)
+        finally:
+            os.close(fd)
+        private_directory(output, exist_ok=True)
         status["status"] = "complete"
         print(f"[FLIGHT] local timeline report: {output / 'report.html'}", file=sys.stderr, flush=True)
     except (Exception, KeyboardInterrupt) as exc:

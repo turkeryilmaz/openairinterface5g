@@ -41,6 +41,11 @@ DEFAULT_PCAP_FILTER = ("sctp port 38412 or udp port 2152 or udp port 8805 or tcp
 PCAP_PROFILES = {"default": DEFAULT_PCAP_FILTER, "all": "len >= 0"}
 MAX_RAW_LINE = 65536
 DOCKER_TIME = re.compile(rb"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?(?:Z|[+-]\d\d:\d\d)) ")
+CORE_LOG_HEADER = re.compile(
+    rb"^\s*\[\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d{1,9})?\]\s*"
+    rb"\[[A-Za-z][A-Za-z0-9_.-]{1,48}\]\s*\[(?:trace|debug|info|warn|warning|error|critical|fatal)\]\s*",
+    re.IGNORECASE,
+)
 # Short key labels seen in core logs supplement OutputSanitizer's OAI markers.
 CORE_SECRET = re.compile(rb"(?i)(?:^|[^a-z0-9_])(?:k|op|opc|ki|xres(?:_star)?|res(?:_star)?|"
                          rb"kasme|ck|ik|ak|sqn|rand|autn|msisdn|guti|5g[-_]s[-_]tmsi|authorization)[\"']?\s*[:=]")
@@ -180,6 +185,23 @@ class _RecordWriter:
                   "source_kind": self.child.kind, "source_name": self.child.name, "stream": self.stream,
                   "text": data.rstrip(b"\n").decode("utf-8", "replace"), **self.context}
         return self.writer.write(json.dumps(record, sort_keys=True, separators=(",", ":")).encode() + b"\n")
+
+
+class _CoreLogRedactor:
+    """Use the existing module/hexadecimal boundary checks for complete core headers."""
+    def __init__(self, redactor: Any) -> None:
+        self.redactor = redactor
+        self.stats = redactor.stats
+
+    def accept(self, line: bytes) -> bool:
+        normalized = self.redactor._normalized(line)
+        header = CORE_LOG_HEADER.match(normalized)
+        if header is not None and not self.redactor._is_sensitive(line):
+            # Only the redaction decision sees this prefix. OutputSanitizer keeps
+            # the original safe line, including its source timestamp and module.
+            # Consume the entire core header so hexadecimal payloads remain guarded.
+            line = b"[CORE] " + normalized[header.end():]
+        return self.redactor.accept(line)
 
 
 @dataclass
@@ -332,7 +354,9 @@ class AuxiliarySupervisor:
                 if child.kind != "pcap":
                     # Docker preserves application stdout/stderr separately.
                     # One sensitive block can span both pipes; share its guard.
-                    child.streams["stderr"]["sanitizer"].redactor = child.streams["stdout"]["sanitizer"].redactor
+                    redactor = _CoreLogRedactor(child.streams["stdout"]["sanitizer"].redactor)
+                    child.streams["stdout"]["sanitizer"].redactor = redactor
+                    child.streams["stderr"]["sanitizer"].redactor = redactor
                 command = self._command(child, executable)
                 child.process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                                  stderr=subprocess.PIPE, close_fds=True, start_new_session=True, umask=0o077,
