@@ -6,6 +6,8 @@ Example: python3 timeline.py --gnb GNB_SESSION --ue UE_SESSION --output NEWDIR
 Inputs are attempts or recovery sessions containing attempts/. Input files are
 read only. NEWDIR must not exist and must be outside every input. Capture's
 automatic report uses a narrowly scoped opt-in for its own report/ child.
+With both roles, --output GNB_CAPTURE/report publishes report.html and combined/
+exports beside the preserved local gNB report, without replacing existing files.
 """
 from __future__ import annotations
 
@@ -265,7 +267,7 @@ def clock_values(clock: dict) -> tuple:
     return (mono if mono is not None and mono >= 0 else None, utc if utc is not None and utc >= 0 else None)
 
 
-def native_fields(event: dict) -> tuple[dict, list]:
+def native_fields(event: dict, joined: dict | None = None) -> tuple[dict, list]:
     """Reuse typed production decoders; interpret only simple schema-v1 columns."""
     kind = event["event"]
     typed = {}
@@ -282,6 +284,8 @@ def native_fields(event: dict) -> tuple[dict, list]:
         if value is not None:
             typed = {key: value for key, value in value.items() if not key.startswith("_")}
             break
+    if joined:
+        typed.update(joined)
     fields = {"raw": {key: event[key] for key in "abcdef"}, "typed": typed}
     metrics = []
 
@@ -345,6 +349,9 @@ def native_fields(event: dict) -> tuple[dict, list]:
         add("UE L1 SINR", integer(event["f"]), "dB")
     elif kind == 11:
         add("UE legacy configured gain minus offset", integer(event["d"]), "gain setting dB")
+        fields["agc_acquisition"] = dict(ue=event["a"], requested_delta_db=event["b"],
+            returned_delta_db=event["c"], configured_gain_minus_offset_db=event["d"], return_code=event["e"])
+        add("UE acquisition gain adjustment result", kind, "event code")
     elif kind == 21:
         add("gNB DL MAC SDU counter", integer(event["d"]), "bytes", entity)
         add("gNB UL MAC SDU counter", integer(event["e"]), "bytes", entity)
@@ -390,12 +397,78 @@ def native_fields(event: dict) -> tuple[dict, list]:
     }
     for key, name, unit in typed_metrics.get(kind, ()):
         add(name, typed.get(key), unit, entity)
+    if kind == 45 and (typed.get("would_change") or typed.get("submitted")):
+        # The producer also repeats hold observations once per second. Keep
+        # these out of the action timeline; a proposal is not an actuation.
+        action = "request submitted" if typed.get("submitted") else "proposal not submitted"
+        add("RX AGC " + action, kind, "event code", typed.get("source", ""))
+    elif kind == 40 and typed.get("operation") in ("SET_RX", "SET_TX") and typed.get("request_id") != 0:
+        operation = "RX" if typed["operation"] == "SET_RX" else "TX"
+        add(operation + " device gain result " + typed.get("status", "unknown"), kind, "event code")
+    elif kind in (49, 58) and type(typed.get("applied")) is bool:
+        applied = "result inconsistent" if typed["applied"] and typed.get("status") != "OK" else "applied" if typed["applied"] else "not applied"
+        add("TX digital power " + applied, kind, "event code", typed.get("channel", ""))
+    elif kind == 51:
+        add("TX digital power request rejected", kind, "event code", typed.get("channel", ""))
     if kind in (80, 84, 87, 88, 90, 91, 119):
         add(decoder.NAMES[kind], kind, "event code", entity)
     if kind == 111:
         add("gNB PUSCH CRC failed", int(typed["crc_failed"]), "boolean", entity)
         add("gNB PUSCH DTX", int(typed["dtx"]), "boolean", entity)
     return fields, metrics
+
+
+RECOVERY_EVENTS = {
+    "recovery_session_started": "Recovery session started",
+    "recovery_attempt_started": "Recovery attempt prepared",
+    "recovery_attempt_worker_started": "Recovery worker launched",
+    "recovery_attempt_finished": "Recovery worker finished",
+    "recovery_backoff": "Recovery backoff started",
+    "recovery_group_fence": "Recovery group signal requested",
+    "recovery_session_finished": "Recovery session finished",
+    "operator_stop_forwarded": "Operator stop forwarding result",
+}
+
+
+def recovery_metric(row: dict) -> str | None:
+    name = row["kind"]
+    if name != "recovery_policy_transition":
+        return RECOVERY_EVENTS.get(name)
+    decision = row.get("decision")
+    if isinstance(decision, dict) and decision.get("action") in ("observe", "restart", "retry", "stop"):
+        return "Recovery decision " + decision["action"]
+    change = row.get("change")
+    if isinstance(change, dict) and isinstance(change.get("event"), str):
+        return "Recovery observation " + change["event"][:96]
+    return None
+
+
+def point_details(fields: dict) -> dict:
+    """Bound display details; full source fields remain in CSV/JSONL exports."""
+    def scalars(values: dict, keys: tuple) -> dict:
+        return {key: value[:512] if isinstance(value, str) else value
+                for key in keys if (value := values.get(key)) is not None and type(value) in (str, int, float, bool)}
+
+    details = scalars(fields, ("kind", "policy_phase", "policy_generation", "ordinal", "attempt_directory", "worker_pid",
+        "process_group", "state", "signal", "requested_signal", "delivered_signal", "reason", "exit_code", "child_returncode",
+        "recovery_stop_reason", "group_fence_state", "remaining_ns", "planned_launch_monotonic_ns", "actual_launch_monotonic_ns"))
+    for key, keys in {
+        "decision": ("action", "reason", "not_before_ns"), "policy_decision": ("action", "reason", "not_before_ns"),
+        "change": ("event", "reason", "previous_reason", "candidate_action", "qualified", "count", "cause", "policy",
+                   "wait_seconds", "device_id", "observed_duration_ns", "persistence_required_ns", "application_delivery_verified"),
+        "agc_acquisition": ("ue", "requested_delta_db", "returned_delta_db", "configured_gain_minus_offset_db", "return_code"),
+        "typed": ("source", "generation", "phase", "reason", "would_change", "submitted", "candidate_gain_db",
+                  "reported_rx_gain_db", "input_join_status", "mean_level_dbfs", "peak_component_dbfs", "error_db",
+                  "radio", "request_id", "operation", "status", "status_code", "requested_gain_db", "rx_readback_db",
+                  "tx_readback_db", "rx_gain_valid", "tx_gain_valid", "time_metadata_joined", "channel", "applied",
+                  "actuation_requested", "requested_power_dbm", "estimated_output_power_dbm", "amplitude_coefficient_q30",
+                  "selected_nominal", "requested_digital_dbfs", "realized_digital_dbfs"),
+    }.items():
+        if isinstance(fields.get(key), dict):
+            values = scalars(fields[key], keys)
+            if values:
+                details[key] = values
+    return details
 
 
 class Report:
@@ -488,6 +561,29 @@ class Report:
                 info["decoder"] = {"directory": str(decoded.relative_to(self.output)),
                     **{key: status.get(key) for key in ("files", "events", "invalid_lines", "unsupported_schema",
                                                        "clean_footer_observed", "footers", "sampling_config")}}
+                # Reuse production decoder joins by exact source location. Keep
+                # this lookup on disk rather than accumulating every gain action.
+                self.db.execute("CREATE TEMP TABLE native_details(source TEXT,line INTEGER,fields TEXT,PRIMARY KEY(source,line))")
+                for filename in ("radio_gain.csv", "radio_rx_decisions.csv"):
+                    with (decoded / filename).open(newline="") as detail_source:
+                        for index, detail in enumerate(csv.DictReader(detail_source)):
+                            if index % 1024 == 0:
+                                self.check_space()
+                            parsed = {}
+                            for key, value in detail.items():
+                                if value == "":
+                                    parsed[key] = None
+                                elif value in ("True", "False"):
+                                    parsed[key] = value == "True"
+                                elif re.fullmatch(r"-?\d+", value):
+                                    parsed[key] = int(value)
+                                else:
+                                    try:
+                                        parsed[key] = float(value)
+                                    except ValueError:
+                                        parsed[key] = value
+                            self.db.execute("INSERT INTO native_details VALUES(?,?,?)",
+                                (detail["source_file"], int(detail["source_line"]), packed(parsed)))
                 with (decoded / "events.csv").open(newline="") as source_csv:
                     batches = {}
                     harq_limits = {"dl": set(), "ul": set()}
@@ -496,7 +592,9 @@ class Report:
                         if event["event"] not in SELECTED:
                             continue
                         event.update(source_file=row["source_file"], source_line=int(row["source_line"]))
-                        fields, metrics = native_fields(event)
+                        detail = self.db.execute("SELECT fields FROM native_details WHERE source=? AND line=?",
+                                                 (row["source_file"], int(row["source_line"]))).fetchone() if event["event"] in (40, 45) else None
+                        fields, metrics = native_fields(event, json.loads(detail[0]) if detail else None)
                         ring = event["ring"]
                         if event["event"] == 130 and 0 <= ring < 64:
                             batches[ring] = dict(fields, last_sequence=event["sequence"], last_mono=event["mono_ns"])
@@ -536,6 +634,7 @@ class Report:
                                  utc=integer(event["realtime_ns"]), source=str(recorder / row["source_file"]),
                                  line=int(row["source_line"]), fields=fields, metrics=metrics,
                                  ring=event["ring"], sequence=event["sequence"])
+                self.db.execute("DROP TABLE native_details")
             else:
                 self.warnings["attempts_without_native_recorder"] += 1
             for prefix in ("recovery", "traffic"):
@@ -594,6 +693,10 @@ class Report:
             mono, utc = clock_values(row.get("receipt_clock", row.get("clock", {})))
             metrics = []
             fields = {key: value for key, value in row.items() if key not in ("text", "clock", "receipt_clock")}
+            if prefix == "recovery":
+                metric = recovery_metric(row)
+                if metric:
+                    metrics.append([metric, 1, "event code", ""])
             interval = row.get("interval")
             if (prefix == "traffic" and name == "traffic_output" and isinstance(interval, dict)
                     and not row.get("partial") and interval.get("reporter") == "receiver"
@@ -790,7 +893,8 @@ class Report:
                 if "mac_rate_interval" in fields:
                     provenance += "; interval " + packed(fields["mac_rate_interval"])
                 points.append([None if mono is None else (mono - minima[domain]) / 1e9,
-                               None if utc is None else utc / 1e6, value, packed(context), provenance])
+                               None if utc is None else utc / 1e6, value, packed(context), provenance,
+                               point_details(fields) if unit == "event code" else {}])
             nonzero = self.db.execute("SELECT COUNT(*) FROM points WHERE series=? AND value!=0", (series,)).fetchone()[0]
             if unit == "MCS index" and stride > 1:
                 self.warnings["mcs_display_limit_reached_full_export_required"] += 1
@@ -878,7 +982,7 @@ def configuration_cards(metadata: dict) -> str:
     return "".join(cards)
 
 
-def render_html(metadata: dict, plots: list) -> str:
+def render_html(metadata: dict, plots: list, export_prefix: str = "") -> str:
     def safe_json(value: Any) -> str:
         # JSON text is embedded as inert data, with script delimiters escaped.
         return packed(value).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
@@ -892,12 +996,13 @@ def render_html(metadata: dict, plots: list) -> str:
                                script=javascript, scopes=scopes, cards=configuration_cards(metadata),
                                configurations=html.escape(json.dumps(configurations, indent=2, ensure_ascii=True)),
                                facts=html.escape(json.dumps(metadata, indent=2, ensure_ascii=True)),
+                               export_prefix=html.escape(export_prefix, quote=True),
                                omitted=metadata.get("plot_series_omitted", 0))
 
 
 def generate(inputs: list[tuple[str, Path]], output: Path, *, clock_step_ms: float = 5,
              max_plot_points: int = 2000, max_plot_series: int = 128, allow_nested_output: bool = False,
-             min_free_bytes: int = 512 * 1024 * 1024) -> dict:
+             min_free_bytes: int = 512 * 1024 * 1024, _combined: bool = False) -> dict:
     if not inputs:
         raise ValueError("provide at least one --gnb, --ue or --core capture")
     if not math.isfinite(clock_step_ms) or clock_step_ms <= 0 or not 2 <= max_plot_points <= 10000 or not 1 <= max_plot_series <= 256:
@@ -926,9 +1031,14 @@ def generate(inputs: list[tuple[str, Path]], output: Path, *, clock_step_ms: flo
                 roots.append(("core", auxiliary))
                 known.add(auxiliary)
     output = output.resolve()
+    combined_root = next((path for role, path in roots if role == "gnb"), None)
+    combined_allowed = (_combined and sum(role == "gnb" for role, _ in roots) == 1
+                        and any(role == "ue" for role, _ in roots) and output == combined_root / "report" / "combined")
+    if _combined and not combined_allowed:
+        raise ValueError("combined output requires one selected gNB and at least one UE, under gNB/report/combined")
     for role, path in roots:
         nested_report = allow_nested_output and role in ("gnb", "ue") and output == path / "report"
-        if (output == path or path in output.parents) and not nested_report:
+        if (output == path or path in output.parents) and not (nested_report or combined_allowed and path == combined_root):
             raise ValueError("output must be outside every input capture (automatic reports allow only its direct report/ child)")
     output.mkdir(mode=0o700, parents=False, exist_ok=False)
     report = Report(output, clock_step_ms, max_plot_points, max_plot_series, min_free_bytes)
@@ -962,7 +1072,7 @@ def generate(inputs: list[tuple[str, Path]], output: Path, *, clock_step_ms: flo
                     "plot_sampled_points": sum(s["plotted_points"] for s in plots),
                     "warnings": dict(report.warnings), "scope": SCOPES}
         report.write_text("metadata.json", json.dumps(metadata, indent=2, ensure_ascii=True, allow_nan=False) + "\n")
-        report.write_text("report.html", render_html(metadata, plots))
+        report.write_text("report.html", render_html(metadata, plots, "combined/" if _combined else ""))
     except Exception as error:
         (output / "INCOMPLETE.json").write_text(packed({"status": "incomplete", "error": str(error)}) + "\n")
         raise
@@ -972,18 +1082,40 @@ def generate(inputs: list[tuple[str, Path]], output: Path, *, clock_step_ms: flo
     return metadata
 
 
+def generate_combined(inputs: list[tuple[str, Path]], output: Path, **options: Any) -> dict:
+    """Publish a paired report beside the preserved local gNB report/exports."""
+    gnbs = [path.resolve(strict=True) for role, path in inputs if role == "gnb"]
+    output = output.absolute()
+    if (len(gnbs) != 1 or not any(role == "ue" for role, _ in inputs) or output != gnbs[0] / "report"
+            or output.is_symlink() or not output.is_dir()):
+        raise ValueError("combined destination must be the existing selected gNB capture's nonsymlink report/ directory")
+    child, destination = output / "combined", output / "report.html"
+    if child.exists() or child.is_symlink() or destination.exists() or destination.is_symlink():
+        raise ValueError("combined directory and combined report.html must not already exist")
+    result = generate(inputs, child, _combined=True, **options)
+    # Same-filesystem, exclusive publication adds no second HTML allocation and
+    # never exposes a partially copied final report.
+    destination.hardlink_to(child / "report.html")
+    (child / "report.html").unlink()
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--gnb", type=Path, action="append", default=[], help="gNB attempt/session; repeatable")
     parser.add_argument("--ue", type=Path, action="append", default=[], help="UE attempt/session; repeatable")
     parser.add_argument("--core", type=Path, action="append", default=[], help="auxiliary JSONL directory; repeatable")
-    parser.add_argument("--output", type=Path, required=True, help="new report directory outside captures; parent must exist")
+    parser.add_argument("--output", type=Path, required=True,
+                        help="new external report directory, or selected GNB_CAPTURE/report for paired output")
     parser.add_argument("--clock-step-ms", type=float, default=5, help="offset jump threshold in milliseconds (default 5)")
     parser.add_argument("--max-plot-points", type=int, default=2000, help="sampled points/series (default 2000; full exports retained)")
     parser.add_argument("--max-plot-series", type=int, default=128, help="plotted series (default 128; full exports retained)")
     args = parser.parse_args()
     try:
-        result = generate([("gnb", p) for p in args.gnb] + [("ue", p) for p in args.ue] + [("core", p) for p in args.core], args.output,
+        inputs = [("gnb", p) for p in args.gnb] + [("ue", p) for p in args.ue] + [("core", p) for p in args.core]
+        combined = (len(args.gnb) == 1 and bool(args.ue)
+                    and args.output.absolute() == args.gnb[0].resolve() / "report")
+        result = (generate_combined if combined else generate)(inputs, args.output,
                           clock_step_ms=args.clock_step_ms, max_plot_points=args.max_plot_points,
                           max_plot_series=args.max_plot_series)
     except (OSError, ValueError, sqlite3.Error) as error:

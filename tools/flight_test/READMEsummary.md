@@ -65,9 +65,9 @@ synchronization or context loss. These are different from a lost-packet timer.
 
 Output defaults to `cmake_targets/log/FlightTests/YYYY-MM-DD`; the terminal
 prints the actual capture directory. Override with `--flight-output PATH`.
-Download `report/report.html` alone and open it in Firefox. The automatic report
-contains the local role/core evidence. To compare both endpoints, make their
-captures accessible on one analysis host and run:
+Open the local `report/gNBreport.html` or `report/nrUEreport.html` in Firefox.
+The automatic report contains the local role/core evidence. To compare both
+endpoints, make their captures accessible on one analysis host and run:
 
 ```sh
 python3 tools/flight_test/timeline.py \
@@ -82,4 +82,12 @@ directory must be new. The graphs use elapsed recording time by default, with
 an option to show UTC. Enter an actual scenario start if you want scenario-relative
 zero; the report does not guess it. Cross-host UTC alignment is unverified.
 Expand each graph's help for metric meaning, sampling and missing-data details.
+Connection and Radio Events appears first, including recorded supervisor and
+gain-control decisions/results. Inspect points for reasons and requested versus
+recorded results; a submitted request is not confirmed actuation. Use Full Screen
+beside a graph's Hide All/Show All controls, then Escape or Exit Full Screen to
+return. For a combined report beside the local gNB report, use
+`--output GNB_CAPTURE/report`
+with both `--gnb` and `--ue`: the combined HTML is `report/report.html`, and its
+exports are under `report/combined/`. Existing combined output is never overwritten.
 [Summary and report details](README.md#summaries-and-the-combined-timeline).

@@ -676,9 +676,10 @@ Its output states the 64 MiB scan budget and any truncation, malformed/partial
 lines or unavailable files. Session parents keep their status and recovery
 journal; this command takes an individual attempt.
 
-Add `report` to generate `report/report.html` automatically inside the completed
-local capture/session. It includes the local role and locally collected core
-records. The program cannot infer or read a peer capture on another host. Copy
+Add `report` to generate `report/gNBreport.html` or `report/nrUEreport.html`
+automatically inside the completed local capture/session. It includes the local
+role and locally collected core records. The program cannot infer or read a
+peer capture on another host. Copy
 both captures to one analysis host for a combined report. A report-generation
 error is reported separately and does not change the OAI process exit status.
 
@@ -697,7 +698,10 @@ Use the actual printed capture directories. `--gnb`, `--ue` and `--core` are
 repeatable; omit unavailable inputs. For integrated core capture, pass the
 selected attempt's `auxiliary/` directory as `--core`. The output directory must
 be new, outside every input capture, with an existing parent. Inputs remain
-unchanged. The report reads core text/metadata, not packet payloads.
+unchanged. The report reads core text/metadata, not packet payloads. With both
+roles selected, `--output GNB_CAPTURE/report` instead places the combined
+`report.html` beside the local gNB report, with its exports under a new
+`combined/` child. Existing combined output is never replaced.
 
 The output contains `events.csv`, `events.jsonl`, `recovery.csv`,
 `clock_segments.csv`, `metadata.json`, per-attempt decoded source records under
@@ -708,6 +712,16 @@ offers host-UTC and per-domain elapsed-time views. Defaults limit plots to
 all selected normalized records, including fields and source-file/line
 references. Recorder sampling, losses and malformed input still limit what was
 available to normalize.
+
+Connection and Radio Events appears first. It includes recorded recovery-policy
+decisions, observed supervisor state changes, worker/backoff/cleanup lifecycle,
+RX AGC proposals or submitted requests, gain-device results, and digital TX
+scaling results. Periodic progress snapshots and RX hold observations do not become
+action rows. Inspect a point for reasons, attempt/generation, requested gain,
+valid readbacks and error status. A decision/request does not prove actuation;
+digital TX scaling does not establish hardware RF gain or transmitted RF power.
+Each graph has Full Screen beside Hide All/Show All. Toggles and help remain
+available there; Exit Full Screen or Escape restores the prior page position.
 
 Ordering uses host monotonic clock domains. A proven host boot can share a
 domain; unknown boot identity keeps attempts or core captures separate. The

@@ -75,6 +75,41 @@ for (const s of series) {
   if (!groups.has(s.unit)) groups.set(s.unit, []);
   groups.get(s.unit).push(s);
 }
+const orderedGroups = [...groups].sort(([a],[b]) => (a==='event code'?-1:b==='event code'?1:0));
+let fullscreenState = null;
+
+async function toggleFullscreen(article, unit) {
+  const statusId='fullscreen-status-'+encodeURIComponent(unit);
+  try {
+    if(document.fullscreenElement===article) {
+      await document.exitFullscreen();
+      return;
+    }
+    if(!article.requestFullscreen) throw new Error('Full Screen is unavailable in this browser.');
+    fullscreenState={article,scrollX:window.scrollX,scrollY:window.scrollY,pending:true};
+    await article.requestFullscreen();
+    if(fullscreenState) fullscreenState.pending=false;
+    draw();
+  } catch(error) {
+    fullscreenState=null;
+    draw();
+    const status=document.getElementById(statusId);
+    if(status)status.textContent='Could not enter Full Screen: '+error.message;
+  }
+}
+document.addEventListener('fullscreenchange',()=>{
+  if(!fullscreenState)return;
+  if(document.fullscreenElement===fullscreenState.article) {
+    fullscreenState.pending=false;
+    draw();
+  } else {
+    const previous=fullscreenState;
+    fullscreenState=null;
+    draw();
+    window.scrollTo({left:previous.scrollX,top:previous.scrollY,behavior:'instant'});
+    requestAnimationFrame(()=>window.scrollTo({left:previous.scrollX,top:previous.scrollY,behavior:'instant'}));
+  }
+});
 const titles = {
   'event code': 'Connection and radio events',
   'core observation': 'Core Network Observations',
@@ -198,6 +233,27 @@ const metricHelp = {
 
 function describeSeries(s) {
   const metric=s.identity.metric;
+  if(metric.startsWith('Recovery decision '))return 'A recorded recovery-supervisor policy decision. Observe means continue observing; restart asks the enabled supervisor to stop this worker; retry permits a later worker attempt after its deadline; stop declines another attempt. A decision alone does not prove that a signal was sent or a replacement launched. Inspect the point for the reason, policy phase, generation and deadline.';
+  if(metric.startsWith('Recovery observation '))return 'A change recognized by the recovery supervisor from native progress or radio-health evidence. This is a collector observation, not an action or proof of application delivery. Its source event, reason and qualification are retained in the point details.';
+  const recoveryHelp={
+    'Recovery session started':'The supervisor opened its recovery session. This precedes any worker launch.',
+    'Recovery attempt prepared':'The supervisor prepared an attempt and its planned/actual launch bookkeeping. The separate worker-launched record identifies a successful subprocess launch.',
+    'Recovery worker launched':'The launch observer recorded the new worker process identifier. Launch does not establish synchronization or a working data connection.',
+    'Recovery worker finished':'The supervisor collected the worker result and process-group cleanup state. A recovery_stop_reason reports an earlier controlled-stop outcome; this dot timestamps result collection, not the earlier SIGINT.',
+    'Recovery backoff started':'The supervisor began waiting for the recorded launch deadline. This is not an outage measurement or proof that the next worker launched.',
+    'Recovery group signal requested':'The supervisor recorded its intent immediately before signalling its owned worker group during cleanup. The state and signal identify graceful or forced cleanup; this record alone does not confirm signal delivery or group exit.',
+    'Recovery session finished':'The supervisor recorded the final session reason and exit status, including operator stops and cleanup failures.',
+    'Operator stop forwarding result':'The capture recorded forwarding an operator stop to the owned group. A non-null delivered_signal confirms the signalling call succeeded; an absent value does not prove delivery.',
+    'UE acquisition gain adjustment result':'The legacy/acquisition UE gain-adjustment function returned. Details retain requested and returned deltas, configured gain minus offset, and the return code. This configuration-derived value is not itself a hardware readback; backend results have separate rows.',
+    'RX AGC request submitted':'Automatic Gain Control (AGC) submitted an RX gain request to the gain owner. The reason, source, acquisition/tracking phase, candidate gain and joined input describe the decision. Submitted means admitted to the request path, not completed actuation.',
+    'RX AGC proposal not submitted':'Automatic Gain Control proposed a gain change without an admitted request. Observe mode can produce this, and a submission can also be refused. The log does not by itself distinguish those cases; no hardware actuation is claimed.',
+    'TX digital power applied':'The TX envelope/scaling path recorded applying a digital sample-amplitude mapping. Requested/realized digital levels or calibrated power estimates describe that mapping; they do not confirm transmitted RF power, RF gain, radio sample acceptance or receiver delivery.',
+    'TX digital power not applied':'The TX digital mapping was observed or rejected without its applied flag. Inspect status and requested values; this is not confirmed digital or RF actuation.',
+    'TX digital power result inconsistent':'The record sets an applied flag together with a non-OK result status. Its raw fields are retained, but the report does not treat this inconsistent payload as confirmed actuation.',
+    'TX digital power request rejected':'The TX path rejected a digital power request or its sample layout before applying it. Reason and actuation_requested distinguish the recorded failure and request mode.'
+  };
+  if(recoveryHelp[metric])return recoveryHelp[metric];
+  if(/^(RX|TX) device gain result /.test(metric))return 'A gain-owner backend operation result. Status OK and a valid RX/TX readback describe the recorded device result; failed statuses do not establish a gain change. Request ID and requested gain are available only through the decoder’s proven metadata join. RX/TX results are not paired to nearby policy decisions merely by timing, and a gain setting is not calibrated RF power.';
   if(eventHelp[metric])return eventHelp[metric];
   const round=/^gNB (DL|UL) HARQ round (\d+)$/.exec(metric);
   if(round){const n=Number(round[2]);return `${round[1]} count of ${n===0?'initial transmissions':`retransmission ${n} (overall attempt ${n+1})`}. HARQ means Hybrid Automatic Repeat Request: retransmissions can reuse information from earlier failed receptions.`;}
@@ -267,12 +323,17 @@ function draw() {
   const scrollX=window.scrollX,scrollY=window.scrollY;
   const focused=document.activeElement?.id;
   const expanded=new Set([...root.querySelectorAll('details[open]')].map(d=>d.id));
+  const fullscreenArticle=fullscreenState&&(fullscreenState.pending||document.fullscreenElement===fullscreenState.article)?fullscreenState.article:null;
+  const articleScroll=fullscreenArticle?.scrollTop||0;
   root.style.minHeight=root.getBoundingClientRect().height+'px';
-  root.replaceChildren();
-  for(const [unit,allRows] of groups) {
+  if(!fullscreenArticle)root.replaceChildren();
+  for(const [unit,allRows] of orderedGroups) {
+    if(fullscreenArticle&&fullscreenArticle.dataset.unit!==unit)continue;
     const eventPlot=unit==='event code'||unit==='core observation';
     const rows=allRows.filter(s=>s.visible);
-    const article=element('article');
+    const article=fullscreenArticle||element('article');
+    article.dataset.unit=unit;
+    article.replaceChildren();
     article.append(element('h2',titleCase(titles[unit]||unit)));
     article.append(element('p',summaries[unit]||'Recorded observations; open the explanation below for their meaning.','chart-description'));
     const help=element('details',undefined,'graph-help');
@@ -303,6 +364,12 @@ function draw() {
       const b=element('button',label);b.type='button';b.id='plot-'+encodeURIComponent(unit)+'-'+(value?'show':'hide');
       b.onclick=()=>{allRows.forEach(s=>s.visible=value);draw();};bulk.append(b);
     }
+    const full=element('button',document.fullscreenElement===article?'Exit Full Screen':'Full Screen');
+    full.type='button';full.id='plot-'+encodeURIComponent(unit)+'-fullscreen';
+    full.setAttribute('aria-pressed',String(document.fullscreenElement===article));
+    full.onclick=()=>toggleFullscreen(article,unit);bulk.append(full);
+    const fullscreenStatus=element('span');fullscreenStatus.id='fullscreen-status-'+encodeURIComponent(unit);
+    fullscreenStatus.setAttribute('role','status');bulk.append(fullscreenStatus);
     bulk.append(element('span',`${rows.length} of ${allRows.length} ${eventPlot?'rows':'curves'} visible`));
     article.append(bulk);
     const legend=element('div',undefined,'legend');
@@ -319,6 +386,7 @@ function draw() {
     canvas.setAttribute('aria-label',(titles[unit]||unit)+' versus time. Series and source counts are listed below.');
     const info=element('p','Move over or click a point to see its time and value.','point');
     info.setAttribute('aria-live','polite');
+    const eventDetail=element('pre',undefined,'point-detail');
     const details=element('details');
     details.id='details-'+encodeURIComponent(unit);
     details.open=expanded.has(details.id);
@@ -331,10 +399,12 @@ function draw() {
       details.append(p);
     }
     if(eventPlot){const choice=element('details',undefined,'event-choices');choice.id='choices-'+encodeURIComponent(unit);choice.open=expanded.has(choice.id);choice.append(element('summary','Choose Event Rows'),legend);article.append(choice);}else article.append(legend);
-    article.append(canvas,info,details); root.append(article);
+    article.append(canvas,info,eventDetail,details);
+    // Moving a fullscreen target, even within its parent, makes Firefox exit it.
+    if(!fullscreenArticle)root.append(article);
     const ratio=window.devicePixelRatio||1;
     const width=Math.max(260,canvas.clientWidth);
-    const height=eventPlot?Math.max(200,allRows.length*58+75):310;
+    const height=eventPlot?Math.max(200,allRows.length*58+75):fullscreenArticle?Math.max(310,innerHeight-280):310;
     canvas.style.height=height+'px';canvas.width=width*ratio;canvas.height=height*ratio;
     const c=canvas.getContext('2d');c.scale(ratio,ratio);
     const pad=eventPlot?Math.min(350,width*0.47):72, right=18, top=26, bottom=57;
@@ -403,7 +473,10 @@ function draw() {
       const rect=canvas.getBoundingClientRect(),xx=e.clientX-rect.left,yy=e.clientY-rect.top;
       let best=null,d=Infinity;
       for(const hit of hits){const distance=(hit[0]-xx)**2+(hit[1]-yy)**2;if(distance<d){d=distance;best=hit;}}
-      if(best&&d<1600)info.textContent=best[2].shortLabel+(eventPlot?'':` = ${axis.scaled?(best[3][2]/axis.factor).toFixed(2):best[3][2]} ${axis.label}`)+'; '+fullTime(timeAt(best[3]))+'; '+best[3][4];
+      if(best&&d<1600) {
+        info.textContent=best[2].shortLabel+(eventPlot?'':` = ${axis.scaled?(best[3][2]/axis.factor).toFixed(2):best[3][2]} ${axis.label}`)+'; '+fullTime(timeAt(best[3]))+'; '+best[3][4];
+        eventDetail.textContent=best[3][5]&&Object.keys(best[3][5]).length?JSON.stringify(best[3][5],null,2):'';
+      }
     }
     canvas.onmousemove=inspect;canvas.onclick=inspect;
     canvas.onwheel=e=>{
@@ -417,7 +490,8 @@ function draw() {
   }
   root.style.minHeight='';
   if(focused&&(focused.startsWith('series-')||focused.startsWith('plot-')))document.getElementById(focused)?.focus({preventScroll:true});
-  window.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});
+  if(fullscreenArticle)fullscreenArticle.scrollTop=articleScroll;
+  else window.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});
 }
 document.getElementById('show-utc').onchange=e=>{
   const next=e.target.checked?1:0;

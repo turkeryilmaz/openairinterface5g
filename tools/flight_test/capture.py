@@ -1044,8 +1044,10 @@ def validate_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
 def generate_local_report(args: argparse.Namespace, root: Path, *, collectors_closed: bool = True) -> None:
     """Report only closed local inputs; reporting never changes the worker result."""
     output = root / "report"
+    html = output / ("gNBreport.html" if args.role == "gnb" else "nrUEreport.html")
     status: dict[str, Any] = {"schema_version": SCHEMA_VERSION, "kind": "flight_report_status",
-                            "directory": str(output), "scope": "current local role and local auxiliary inputs only"}
+                            "directory": str(output), "html": str(html),
+                            "scope": "current local role and local auxiliary inputs only"}
     try:
         if not collectors_closed:
             raise CaptureError("collector shutdown is incomplete")
@@ -1059,16 +1061,17 @@ def generate_local_report(args: argparse.Namespace, root: Path, *, collectors_cl
             if auxiliary.is_dir() and any(auxiliary.glob("auxiliary-*.log")):
                 inputs.append(("core", auxiliary))
         generate(inputs, output, allow_nested_output=True, min_free_bytes=args.min_free_bytes)
+        (output / "report.html").rename(html)
         # Match the capture's sudo ownership: the invoking user must be able
         # to download the standalone report without making it world-readable.
-        fd = os.open(output / "report.html", os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        fd = os.open(html, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
         try:
             private_fd(fd, 0o600)
         finally:
             os.close(fd)
         private_directory(output, exist_ok=True)
         status["status"] = "complete"
-        print(f"[FLIGHT] local timeline report: {output / 'report.html'}", file=sys.stderr, flush=True)
+        print(f"[FLIGHT] local timeline report: {html}", file=sys.stderr, flush=True)
     except (Exception, KeyboardInterrupt) as exc:
         status.update(status="failed" if collectors_closed else "unavailable", error=exc.__class__.__name__)
         if not collectors_closed:
