@@ -903,7 +903,11 @@ static void nr_rx_ra_sdu(gNB_MAC_INST *mac,
       // The UE identified by C-RNTI no longer exists at the gNB
       // Let's abort the current RA, so the UE will trigger a new RA later but using RRCSetupRequest instead. A better
       // solution may be implemented
-      LOG_W(NR_MAC, "No UE found with C-RNTI %04x, ignoring Msg3 to have UE come back with new RA attempt\n", UE->rnti);
+      LOG_W(NR_MAC,
+            "No UE found with C-RNTI %04x, ignoring %s received with RNTI %04x\n",
+            crnti,
+            ra_type == RA_2_STEP ? "MsgA-PUSCH" : "Msg3",
+            rnti);
       NR_UE_info_t *UE = remove_ra_ue(&mac->UE_info, rnti);
       if (UE)
         release_nr_ue_inst(&mac->UE_info.uid_allocator, UE);
