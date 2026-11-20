@@ -134,6 +134,8 @@ uint32_t polar_decoder_int16(const int16_t *input,
                              uint16_t messageLength,
                              uint8_t aggregation_level);
 
+uint32_t polar_decoder_int16_with_params(const int16_t *input, uint64_t *out, uint8_t ones_flag, t_nrPolar_params *polarParams);
+
 int8_t polar_decoder_dci(double *input,
                          uint32_t *out,
                          uint8_t listSize,
@@ -160,6 +162,10 @@ void build_polar_tables(t_nrPolar_params *polarParams);
 void nr_polar_print_polarParams(void);
 
 t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, int aggregation_level);
+
+// The caller owns this decoder and must serialize its uses.
+t_nrPolar_params *nr_polar_create_pbch_decoder(void);
+void nr_polar_destroy_pbch_decoder(t_nrPolar_params *polarParams);
 
 uint16_t nr_polar_aggregation_prime(uint8_t aggregation_level);
 

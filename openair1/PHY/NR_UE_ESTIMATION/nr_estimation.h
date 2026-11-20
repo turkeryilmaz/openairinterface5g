@@ -57,6 +57,13 @@ int nr_pbch_channel_estimation(const NR_DL_FRAME_PARMS *frame_parms,
                                bool sidelink,
                                uint Nid);
 
+void nr_pbch_channel_estimation_retry(const NR_DL_FRAME_PARMS *fp,
+                                      int ssb_index,
+                                      int half_frame,
+                                      int dmrss,
+                                      const c16_t rxdata[PBCH_MAX_RE_PER_SYMBOL],
+                                      c16_t estimates[PBCH_MAX_RE_PER_SYMBOL]);
+
 void nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  const UE_nr_rxtx_proc_t *proc,
                                  const fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch,

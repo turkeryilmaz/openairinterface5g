@@ -176,6 +176,9 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue, uint8_t UE_id)
 
   ue->ta_frame = -1;
   ue->ta_slot = -1;
+
+  if (get_nrUE_params()->pbch_metric_recovery && !get_nrUE_params()->use_ue_fd)
+    nr_ue_pbch_retry_init(ue);
 }
 
 /*!
@@ -1070,6 +1073,7 @@ void *UE_thread(void *arg)
       continue;
 
     if (!UE->is_synchronized) {
+      nr_ue_pbch_retry_reset(UE);
       // seed the out-of-sync tick once from the last known synchronized frame/hfn:
       // absolute_slot doesn't advance while out of sync, so failed sync attempts must not re-seed
       if (!out_of_sync_rrc_tick_seeded) {
@@ -1372,6 +1376,7 @@ void *UE_thread(void *arg)
   for (int i = 0; i < num_dl_actors; i++)
     shutdown_actor(&dl_actors[i]);
   destroy_actor(&sync_actor);
+  nr_ue_pbch_retry_term(UE);
   return NULL;
 }
 

@@ -24,8 +24,9 @@
 #define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
 
 static uint16_t nr_pbch_extract(const NR_DL_FRAME_PARMS *frame_parms,
-                                const c16_t rxdataF[][frame_parms->ofdm_symbol_size],
-                                const c16_t dl_ch_estimates[][frame_parms->ofdm_symbol_size],
+                                int stride,
+                                const c16_t rxdataF[][stride],
+                                const c16_t dl_ch_estimates[][stride],
                                 struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
                                 struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
                                 uint32_t symbol,
@@ -188,6 +189,23 @@ void nr_pbch_channel_compensation(const struct complex16 rxdataF_ext[][PBCH_MAX_
   }
 }
 
+static int16_t nr_pbch_round_soft_symbol(int64_t value, int shift)
+{
+  const int64_t half = INT64_C(1) << (shift - 1);
+  const int64_t rounded = value < 0 ? -((-value + half) >> shift) : (value + half) >> shift;
+  return rounded > INT16_MAX ? INT16_MAX : rounded < INT16_MIN ? INT16_MIN : rounded;
+}
+
+static void nr_pbch_channel_compensation_retry(const c16_t *rx, const c16_t *ch, int nb_re, c16_t *compensated, int shift)
+{
+  DevAssert(shift > 0 && shift < 32);
+  for (int re = 0; re < nb_re; ++re) {
+    // Widen the sum before rounding the real and imaginary products symmetrically.
+    const c64_t product = c64x16maddConjShift(ch[re], rx[re], (c64_t){0}, 0);
+    compensated[re] = (c16_t){.r = nr_pbch_round_soft_symbol(product.r, shift), .i = nr_pbch_round_soft_symbol(product.i, shift)};
+  }
+}
+
 static void nr_pbch_detection_mrc(struct complex16 rxdataF_comp[][PBCH_MAX_RE_PER_SYMBOL], uint8_t nb_antennas_rx, int nb_re)
 {
   if (nb_antennas_rx == 1)
@@ -265,17 +283,19 @@ unsigned char sign(int8_t x) {
 const uint8_t pbch_deinterleaving_pattern[32] = {28, 0, 31, 30, 7,  29, 25, 27, 5,  8,  24, 9,  10, 11, 12, 13,
                                                  1,  4, 3,  14, 15, 16, 17, 2,  26, 18, 19, 20, 21, 22, 6,  23};
 
-void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
-                          const UE_nr_rxtx_proc_t *proc,
-                          const NR_DL_FRAME_PARMS *frame_parms,
-                          const int symbolSSB,
-                          const int i_ssb,
-                          const int nid,
-                          const int ssb_start_subcarrier,
-                          const c16_t rxdataF[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
-                          const c16_t dl_ch_estimates[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
-                          int16_t pbch_e_rx[NR_POLAR_PBCH_E],
-                          uint8_t *log2_maxh)
+static void nr_generate_pbch_llr_impl(const PHY_VARS_NR_UE *ue,
+                                      const UE_nr_rxtx_proc_t *proc,
+                                      const NR_DL_FRAME_PARMS *frame_parms,
+                                      const int symbolSSB,
+                                      const int i_ssb,
+                                      const int nid,
+                                      const int ssb_start_subcarrier,
+                                      const int stride,
+                                      const c16_t rxdataF[frame_parms->nb_antennas_rx][stride],
+                                      const c16_t dl_ch_estimates[frame_parms->nb_antennas_rx][stride],
+                                      int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                                      uint8_t *log2_maxh,
+                                      bool retry)
 {
   const int symbol_offset = nr_get_ssb_start_symbol(frame_parms, i_ssb) % (NR_SYMBOLS_PER_SLOT);
   const int nb_re = (symbolSSB == 2) ? 72 : 180;
@@ -285,6 +305,7 @@ void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
   memset(dl_ch_estimates_ext, 0, sizeof dl_ch_estimates_ext);
 
   nr_pbch_extract(frame_parms,
+                  stride,
                   rxdataF,
                   dl_ch_estimates,
                   rxdataF_ext,
@@ -312,8 +333,10 @@ void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
   }
 
   __attribute__((aligned(32))) struct complex16 rxdataF_comp[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
-  nr_pbch_channel_compensation(rxdataF_ext, dl_ch_estimates_ext, nb_re, rxdataF_comp, frame_parms,
-                               *log2_maxh); // log2_maxh+I0_shift
+  if (retry)
+    nr_pbch_channel_compensation_retry(rxdataF_ext[0], dl_ch_estimates_ext[0], nb_re, rxdataF_comp[0], *log2_maxh);
+  else
+    nr_pbch_channel_compensation(rxdataF_ext, dl_ch_estimates_ext, nb_re, rxdataF_comp, frame_parms, *log2_maxh);
 
   nr_pbch_detection_mrc(rxdataF_comp, frame_parms->nb_antennas_rx, nb_re);
 
@@ -352,21 +375,67 @@ void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
 #endif
 }
 
-int nr_pbch_decode(PHY_VARS_NR_UE *ue,
-                   const NR_DL_FRAME_PARMS *frame_parms,
-                   const UE_nr_rxtx_proc_t *proc,
-                   const int i_ssb,
-                   const int Nid_cell,
-                   int16_t pbch_e_rx[NR_POLAR_PBCH_E],
-                   int *half_frame_bit,
-                   int *ssb_index,
-                   int *ret_symbol_offset,
-                   fapiPbch_t *result)
+void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
+                          const UE_nr_rxtx_proc_t *proc,
+                          const NR_DL_FRAME_PARMS *frame_parms,
+                          const int symbolSSB,
+                          const int i_ssb,
+                          const int nid,
+                          const int ssb_start_subcarrier,
+                          const c16_t rxdataF[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
+                          const c16_t dl_ch_estimates[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
+                          int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                          uint8_t *log2_maxh)
+{
+  nr_generate_pbch_llr_impl(ue,
+                            proc,
+                            frame_parms,
+                            symbolSSB,
+                            i_ssb,
+                            nid,
+                            ssb_start_subcarrier,
+                            frame_parms->ofdm_symbol_size,
+                            rxdataF,
+                            dl_ch_estimates,
+                            pbch_e_rx,
+                            log2_maxh,
+                            false);
+}
+
+void nr_generate_pbch_llr_retry(const NR_DL_FRAME_PARMS *fp,
+                                int symbol,
+                                int ssb_index,
+                                const c16_t rxdataF[1][PBCH_MAX_RE_PER_SYMBOL],
+                                const c16_t estimates[1][PBCH_MAX_RE_PER_SYMBOL],
+                                int16_t llr[NR_POLAR_PBCH_E],
+                                uint8_t *shift)
+{
+  nr_generate_pbch_llr_impl(NULL,
+                            NULL,
+                            fp,
+                            symbol,
+                            ssb_index,
+                            fp->Nid_cell,
+                            0,
+                            PBCH_MAX_RE_PER_SYMBOL,
+                            rxdataF,
+                            estimates,
+                            llr,
+                            shift,
+                            true);
+}
+
+int nr_pbch_decode_with_params(const NR_DL_FRAME_PARMS *frame_parms,
+                               const int i_ssb,
+                               const int Nid_cell,
+                               int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                               int *half_frame_bit,
+                               int *ssb_index,
+                               int *ret_symbol_offset,
+                               fapiPbch_t *result,
+                               t_nrPolar_params *polar)
 {
   TracyCZone(ctx, true);
-  if (ue) {
-    UEscopeCopy(ue, pbchLlr, pbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, NR_POLAR_PBCH_E, 0);
-  }
   // un-scrambling
   const uint8_t Lmax = frame_parms->Lmax;
   const int unscrambling_mask = (Lmax == 64) ? 0x100006D : 0x1000041;
@@ -377,29 +446,18 @@ int nr_pbch_decode(PHY_VARS_NR_UE *ue,
   nr_pbch_unscrambling(pbch_e_rx, Nid_cell, nushift, M, NR_POLAR_PBCH_E, 0, 0, pbch_a_prime, &pbch_a_interleaved);
   //polar decoding de-rate matching
   uint64_t tmp = 0;
-  const int decoderState = polar_decoder_int16(pbch_e_rx,
-                                               (uint64_t *)&tmp,
-                                               0,
-                                               NR_POLAR_PBCH_MESSAGE_TYPE,
-                                               NR_POLAR_PBCH_PAYLOAD_BITS,
-                                               NR_POLAR_PBCH_AGGREGATION_LEVEL);
+  const int decoderState = polar ? polar_decoder_int16_with_params(pbch_e_rx, &tmp, 0, polar)
+                                 : polar_decoder_int16(pbch_e_rx,
+                                                       &tmp,
+                                                       0,
+                                                       NR_POLAR_PBCH_MESSAGE_TYPE,
+                                                       NR_POLAR_PBCH_PAYLOAD_BITS,
+                                                       NR_POLAR_PBCH_AGGREGATION_LEVEL);
   pbch_a_prime = tmp;
 
   if (decoderState) {
-    if (ue && ue->if_inst && ue->if_inst->dl_indication) { // decoding failed in synced state
-      fapi_nr_rx_indication_t rx_ind;
-      rx_ind.number_pdus = 0;
-      nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, 0, 0, NULL, proc, NULL);
-      nr_downlink_indication_t dl_indication = (nr_downlink_indication_t){.gNB_index = proc->gNB_id,
-                                                                          .module_id = ue->Mod_id,
-                                                                          .cc_id = ue->CC_id,
-                                                                          .hfn = proc->hfn_rx,
-                                                                          .frame = proc->frame_rx,
-                                                                          .slot = proc->nr_slot_rx,
-                                                                          .rx_ind = &rx_ind};
-      ue->if_inst->dl_indication(&dl_indication);
-    }
-    return(decoderState);
+    TracyCZoneEnd(ctx);
+    return decoderState;
   }
   //  printf("polar decoder output 0x%08x\n",pbch_a_prime);
   // Decoder reversal
@@ -453,24 +511,54 @@ int nr_pbch_decode(PHY_VARS_NR_UE *ue,
 
 #endif
 
-  if (ue && ue->if_inst && ue->if_inst->dl_indication) {
-    fapi_nr_rx_indication_t rx_ind;
-    rx_ind.number_pdus = 0;
-    nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, 0, 0, NULL, proc, (void *)result);
-    nr_downlink_indication_t dl_indication = (nr_downlink_indication_t){
-        .gNB_index = proc->gNB_id,
-        .module_id = ue->Mod_id,
-        .cc_id = ue->CC_id,
-        .hfn = proc->hfn_rx,
-        .frame = proc->frame_rx,
-        .slot = proc->nr_slot_rx,
-        .rx_ind = &rx_ind,
-    };
-    ue->if_inst->dl_indication(&dl_indication);
-  }
-
   TracyCZoneEnd(ctx);
   return 0;
+}
+
+void nr_pbch_indication(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, fapiPbch_t *result)
+{
+  if (!ue || !ue->if_inst || !ue->if_inst->dl_indication)
+    return;
+
+  fapi_nr_rx_indication_t rx_ind;
+  rx_ind.number_pdus = 0;
+  nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, 0, 0, NULL, proc, result);
+  nr_downlink_indication_t dl_indication = {
+      .gNB_index = proc->gNB_id,
+      .module_id = ue->Mod_id,
+      .cc_id = ue->CC_id,
+      .hfn = proc->hfn_rx,
+      .frame = proc->frame_rx,
+      .slot = proc->nr_slot_rx,
+      .rx_ind = &rx_ind,
+  };
+  ue->if_inst->dl_indication(&dl_indication);
+}
+
+int nr_pbch_decode(PHY_VARS_NR_UE *ue,
+                   const NR_DL_FRAME_PARMS *frame_parms,
+                   const UE_nr_rxtx_proc_t *proc,
+                   const int i_ssb,
+                   const int Nid_cell,
+                   int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                   int *half_frame_bit,
+                   int *ssb_index,
+                   int *ret_symbol_offset,
+                   fapiPbch_t *result)
+{
+  if (ue)
+    UEscopeCopy(ue, pbchLlr, pbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, NR_POLAR_PBCH_E, 0);
+  const int status = nr_pbch_decode_with_params(frame_parms,
+                                                i_ssb,
+                                                Nid_cell,
+                                                pbch_e_rx,
+                                                half_frame_bit,
+                                                ssb_index,
+                                                ret_symbol_offset,
+                                                result,
+                                                NULL);
+  nr_pbch_indication(ue, proc, status == 0 ? result : NULL);
+  return status;
 }
 
 double nr_ue_pbch_freq_offset(const NR_DL_FRAME_PARMS *frame_parms,

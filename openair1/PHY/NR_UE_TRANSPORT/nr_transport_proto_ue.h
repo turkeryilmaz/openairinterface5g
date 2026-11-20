@@ -361,6 +361,24 @@ void nr_generate_pbch_llr(const PHY_VARS_NR_UE *ue,
                           const c16_t dl_ch_estimates[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
                           int16_t pbch_e_rx[NR_POLAR_PBCH_E],
                           uint8_t *log2_maxh);
+void nr_generate_pbch_llr_retry(const NR_DL_FRAME_PARMS *fp,
+                                int symbol,
+                                int ssb_index,
+                                const c16_t rxdataF[1][PBCH_MAX_RE_PER_SYMBOL],
+                                const c16_t estimates[1][PBCH_MAX_RE_PER_SYMBOL],
+                                int16_t llr[NR_POLAR_PBCH_E],
+                                uint8_t *shift);
+struct nrPolar_params;
+int nr_pbch_decode_with_params(const NR_DL_FRAME_PARMS *frame_parms,
+                               int i_ssb,
+                               int Nid_cell,
+                               int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                               int *half_frame_bit,
+                               int *ssb_index,
+                               int *ret_symbol_offset,
+                               fapiPbch_t *result,
+                               struct nrPolar_params *polar);
+void nr_pbch_indication(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, fapiPbch_t *result);
 int nr_pbch_decode(PHY_VARS_NR_UE *ue,
                    const NR_DL_FRAME_PARMS *frame_parms,
                    const UE_nr_rxtx_proc_t *proc,

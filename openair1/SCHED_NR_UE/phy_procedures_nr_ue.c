@@ -14,6 +14,7 @@
 #include "assertions.h"
 #include "defs.h"
 #include "PHY/defs_nr_UE.h"
+#include "PHY/CODING/nrPolar_tools/nr_polar_defs.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/INIT/nr_phy_init.h"
@@ -977,17 +978,86 @@ int get_ssb_index_in_symbol(const PHY_VARS_NR_UE *ue, const int symbIdxInFrame, 
   return -1;
 }
 
+// The longest configured SSB period is 160 ms. A retry never extends this age.
+#define NR_PBCH_REFERENCE_AGE_FRAMES 16
+
+typedef struct {
+  bool valid;
+  uint64_t slot;
+  uint64_t carrier_hz;
+  uint32_t mib_bits;
+  uint16_t pci;
+  uint16_t start_subcarrier;
+  int dl_rb;
+  nr_ssb_type_e ssb_type;
+  uint8_t numerology;
+  uint8_t lmax;
+  uint8_t ssb_index;
+} nr_pbch_reference_t;
+
+struct nr_ue_pbch_retry {
+  t_nrPolar_params *polar;
+  nr_pbch_reference_t reference;
+  bool matching_dmrs;
+  unsigned int captured_symbols;
+  c16_t rx[NB_SYMBOLS_PBCH][PBCH_MAX_RE_PER_SYMBOL];
+};
+
+static bool nr_ue_pbch_retry_supported(const PHY_VARS_NR_UE *ue)
+{
+  const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  return !ue->fd_ifdevice && !ue->sl_mode && fp->freq_range == FR1 && fp->nb_antennas_rx == 1 && (fp->Lmax == 4 || fp->Lmax == 8);
+}
+
+void nr_ue_pbch_retry_init(PHY_VARS_NR_UE *ue)
+{
+  if (!nr_ue_pbch_retry_supported(ue))
+    return;
+  ue->pbch_retry = calloc_or_fail(1, sizeof(*ue->pbch_retry));
+  ue->pbch_retry->polar = nr_polar_create_pbch_decoder();
+}
+
+void nr_ue_pbch_retry_reset(PHY_VARS_NR_UE *ue)
+{
+  if (ue->pbch_retry)
+    ue->pbch_retry->reference.valid = false;
+}
+
+void nr_ue_pbch_retry_term(PHY_VARS_NR_UE *ue)
+{
+  if (!ue->pbch_retry)
+    return;
+  nr_polar_destroy_pbch_decoder(ue->pbch_retry->polar);
+  free(ue->pbch_retry);
+  ue->pbch_retry = NULL;
+}
+
+static uint64_t nr_pbch_slot_number(const NR_DL_FRAME_PARMS *fp, const UE_nr_rxtx_proc_t *proc)
+{
+  return ((uint64_t)proc->hfn_rx * MAX_FRAME_NUMBER + proc->frame_rx) * fp->slots_per_frame + proc->nr_slot_rx;
+}
+
+static bool nr_pbch_reference_is_fresh(const nr_pbch_reference_t *ref, const NR_DL_FRAME_PARMS *fp, const UE_nr_rxtx_proc_t *proc)
+{
+  const uint64_t now = nr_pbch_slot_number(fp, proc);
+  return ref->valid && ref->carrier_hz == fp->dl_CarrierFreq && ref->pci == fp->Nid_cell && ref->ssb_index == fp->ssb_index
+         && ref->start_subcarrier == fp->ssb_start_subcarrier && ref->dl_rb == fp->N_RB_DL && ref->ssb_type == fp->ssb_type
+         && ref->numerology == fp->numerology_index && ref->lmax == fp->Lmax && now > ref->slot
+         && now - ref->slot <= NR_PBCH_REFERENCE_AGE_FRAMES * fp->slots_per_frame;
+}
+
 /* Description: Generates PBCH LLRs from frequency domain signal for one OFDM symbol.
                 Generates PBCH time domain channel response.
    Returns    : SSB index if symbol contains SSB. Else returns -1. */
-int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
-                           const UE_nr_rxtx_proc_t *proc,
-                           const int symbol,
-                           const int ssbIndexIn,
-                           c16_t dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size],
-                           c16_t *dl_ch_estimates_symbol,
-                           int16_t pbch_e_rx[NR_POLAR_PBCH_E],
-                           uint8_t *log2_maxh)
+static int nr_process_pbch_symbol_impl(PHY_VARS_NR_UE *ue,
+                                       const UE_nr_rxtx_proc_t *proc,
+                                       const int symbol,
+                                       const int ssbIndexIn,
+                                       c16_t dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size],
+                                       c16_t *dl_ch_estimates_symbol,
+                                       int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                                       uint8_t *log2_maxh,
+                                       struct nr_ue_pbch_retry *retry)
 {
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   const int symbIdxInFrame = symbol + NR_SYMBOLS_PER_SLOT * proc->nr_slot_rx;
@@ -1014,8 +1084,9 @@ int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
   }
   c16_t dl_ch_estimates[fp->nb_antennas_rx][fp->ofdm_symbol_size];
 
-  const int relPbchSymb = (symbIdxInFrame > (fp->slots_per_frame * NR_SYMBOLS_PER_SLOT / 2)) ? (symbIdxInFrame - startPbchSymbHf)
-                                                                                             : (symbIdxInFrame - startPbchSymb);
+  const bool second_half = symbIdxInFrame > (fp->slots_per_frame * NR_SYMBOLS_PER_SLOT / 2);
+  const int relPbchSymb = symbIdxInFrame - (second_half ? startPbchSymbHf : startPbchSymb);
+  const int dmrs_half = second_half;
 
   const int nid = fp->Nid_cell;
   const int ssb_start_subcarrier = fp->ssb_start_subcarrier;
@@ -1026,7 +1097,7 @@ int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
                                proc,
                                relPbchSymb,
                                ssbIndex & 7,
-                               symbIdxInFrame > (fp->slots_per_frame * NR_SYMBOLS_PER_SLOT / 2),
+                               dmrs_half,
                                ssb_start_subcarrier,
                                rxdataF[aarx],
                                false,
@@ -1036,6 +1107,16 @@ int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
       // do ifft of channel estimate
       freq2time(fp->ofdm_symbol_size, (int16_t *)&dl_ch_estimates[aarx], (int16_t *)dl_ch_estimates_time[aarx]);
       UEscopeCopy(ue, pbchDlChEstimateTime, (void *)dl_ch_estimates_time, sizeof(c16_t), fp->nb_antennas_rx, fp->ofdm_symbol_size, 0);
+    }
+  }
+
+  if (retry) {
+    // The retry can reuse the Gold sequence cached by the ordinary estimate.
+    retry->matching_dmrs = dmrs_half == (fp->Lmax == 4 ? second_half : 0);
+    if (retry->matching_dmrs && retry->reference.valid && ssbIndex == retry->reference.ssb_index && relPbchSymb >= 0
+        && relPbchSymb < NB_SYMBOLS_PBCH) {
+      memcpy(retry->rx[relPbchSymb], &rxdataF[0][ssb_start_subcarrier], sizeof(retry->rx[0]));
+      retry->captured_symbols |= 1U << relPbchSymb;
     }
   }
 
@@ -1062,10 +1143,117 @@ int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
     // resetting ssb index for PBCH detection if there is a stronger SSB index
     if (ue->measurements.ssb_rsrp_dBm[ssbIndex] > ue->measurements.ssb_rsrp_dBm[fp->ssb_index]) {
       fp->ssb_index = ssbIndex;
+      if (retry)
+        retry->reference.valid = false;
     }
   }
 
   return ssbIndex;
+}
+
+int nr_process_pbch_symbol(PHY_VARS_NR_UE *ue,
+                           const UE_nr_rxtx_proc_t *proc,
+                           const int symbol,
+                           const int ssbIndexIn,
+                           c16_t dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size],
+                           c16_t *dl_ch_estimates_symbol,
+                           int16_t pbch_e_rx[NR_POLAR_PBCH_E],
+                           uint8_t *log2_maxh)
+{
+  return nr_process_pbch_symbol_impl(ue,
+                                     proc,
+                                     symbol,
+                                     ssbIndexIn,
+                                     dl_ch_estimates_time,
+                                     dl_ch_estimates_symbol,
+                                     pbch_e_rx,
+                                     log2_maxh,
+                                     NULL);
+}
+
+static uint32_t nr_pbch_static_mib_bits(const fapiPbch_t *pbch)
+{
+  // Exclude the SFN from both parts of PBCH and the half-frame bit from the extra byte.
+  return (pbch->decoded_output[0] & 0x81) | ((uint32_t)pbch->decoded_output[1] << 8) | ((uint32_t)pbch->decoded_output[2] << 16)
+         | ((uint32_t)(pbch->xtra_byte & 0xe0) << 24);
+}
+
+static bool nr_pbch_matches_occasion(const fapiPbch_t *pbch,
+                                     int decoded_half,
+                                     int decoded_ssb,
+                                     int decoded_symbol,
+                                     const NR_DL_FRAME_PARMS *fp,
+                                     const UE_nr_rxtx_proc_t *proc,
+                                     int ssb,
+                                     int last_pbch_symbol)
+{
+  const int sfn = ((pbch->decoded_output[0] & 0x7e) << 3) | reverse_bits(pbch->xtra_byte & 0xf, 4);
+  const int ssb_symbol = proc->nr_slot_rx * fp->symbols_per_slot + last_pbch_symbol - NB_SYMBOLS_PBCH;
+  // The BCCH-BCH choice bit must indicate MIB.
+  return !(pbch->decoded_output[0] & 0x80) && sfn == proc->frame_rx && decoded_half == (proc->nr_slot_rx >= fp->slots_per_frame / 2)
+         && decoded_ssb == ssb && decoded_symbol == ssb_symbol;
+}
+
+static __attribute__((noinline)) bool nr_pbch_try_recovery(struct nr_ue_pbch_retry *retry,
+                                                           const NR_DL_FRAME_PARMS *fp,
+                                                           const UE_nr_rxtx_proc_t *proc,
+                                                           int ssb,
+                                                           int last_pbch_symbol,
+                                                           int16_t llr[NR_POLAR_PBCH_E],
+                                                           fapiPbch_t *result)
+{
+  const int half = proc->nr_slot_rx >= fp->slots_per_frame / 2;
+  c16_t estimates[1][PBCH_MAX_RE_PER_SYMBOL];
+  uint8_t shift = 0;
+  for (int i = 0; i < NB_SYMBOLS_PBCH; ++i) {
+    nr_pbch_channel_estimation_retry(fp, ssb, half, i, retry->rx[i], estimates[0]);
+    nr_generate_pbch_llr_retry(fp, i + 1, ssb, &retry->rx[i], estimates, llr, &shift);
+  }
+  int decoded_half, decoded_ssb, decoded_symbol;
+  return nr_pbch_decode_with_params(fp, ssb, fp->Nid_cell, llr, &decoded_half, &decoded_ssb, &decoded_symbol, result, retry->polar)
+             == 0
+         && nr_pbch_matches_occasion(result, decoded_half, decoded_ssb, decoded_symbol, fp, proc, ssb, last_pbch_symbol)
+         && nr_pbch_static_mib_bits(result) == retry->reference.mib_bits;
+}
+
+static bool nr_pbch_decode_with_retry(PHY_VARS_NR_UE *ue,
+                                      const UE_nr_rxtx_proc_t *proc,
+                                      struct nr_ue_pbch_retry *retry,
+                                      int ssb,
+                                      int last_pbch_symbol,
+                                      int16_t llr[NR_POLAR_PBCH_E],
+                                      fapiPbch_t *result,
+                                      bool *ordinary_success)
+{
+  const NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  UEscopeCopy(ue, pbchLlr, llr, sizeof(int16_t), fp->nb_antennas_rx, NR_POLAR_PBCH_E, 0);
+  int decoded_half, decoded_ssb, decoded_symbol;
+  *ordinary_success =
+      nr_pbch_decode_with_params(fp, ssb, fp->Nid_cell, llr, &decoded_half, &decoded_ssb, &decoded_symbol, result, retry->polar)
+      == 0;
+  bool success = *ordinary_success;
+  if (success) {
+    retry->reference.valid =
+        nr_pbch_matches_occasion(result, decoded_half, decoded_ssb, decoded_symbol, fp, proc, ssb, last_pbch_symbol);
+    if (retry->reference.valid)
+      retry->reference = (nr_pbch_reference_t){
+          .valid = true,
+          .slot = nr_pbch_slot_number(fp, proc),
+          .carrier_hz = fp->dl_CarrierFreq,
+          .mib_bits = nr_pbch_static_mib_bits(result),
+          .pci = fp->Nid_cell,
+          .start_subcarrier = fp->ssb_start_subcarrier,
+          .dl_rb = fp->N_RB_DL,
+          .ssb_type = fp->ssb_type,
+          .numerology = fp->numerology_index,
+          .lmax = fp->Lmax,
+          .ssb_index = ssb,
+      };
+  } else if (retry->reference.valid && retry->captured_symbols == ((1U << NB_SYMBOLS_PBCH) - 1)) {
+    success = nr_pbch_try_recovery(retry, fp, proc, ssb, last_pbch_symbol, llr, result);
+  }
+  nr_pbch_indication(ue, proc, success ? result : NULL);
+  return success;
 }
 
 static int pbch_process(PHY_VARS_NR_UE *UE,
@@ -1076,7 +1264,8 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
                         c16_t pbch_ch_est_time[UE->frame_parms.nb_antennas_rx][UE->frame_parms.ofdm_symbol_size],
                         int16_t pbch_e_rx[NR_POLAR_PBCH_E],
                         int *pbchSymbCnt,
-                        uint8_t *log2_maxh)
+                        uint8_t *log2_maxh,
+                        struct nr_ue_pbch_retry *retry)
 {
   int sampleShift = INT_MAX;
 
@@ -1089,29 +1278,35 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
   else if (*pbchSymbCnt == 2)
     cur_pbch_est = pbch_ch_est_sym3;
 
-  *ssbIndex = nr_process_pbch_symbol(UE, proc, symbol, *ssbIndex, pbch_ch_est_time, cur_pbch_est, pbch_e_rx, log2_maxh);
+  *ssbIndex = nr_process_pbch_symbol_impl(UE, proc, symbol, *ssbIndex, pbch_ch_est_time, cur_pbch_est, pbch_e_rx, log2_maxh, retry);
   // If valid PBCH symbol, increment symbol count.
   if (*ssbIndex > -1)
     (*pbchSymbCnt)++;
   // Current symbol is last PBCH symbol, decode it.
   if (*pbchSymbCnt == 3) {
     if (*ssbIndex == UE->frame_parms.ssb_index) {
-      fapiPbch_t pbchResult; // TODO: Not used anywhere. To be cleaned later
-      int hfb, ssb_idx, symb_offset = 0;
-      const int nid = UE->frame_parms.Nid_cell;
-      const int pbchSuccess =
-          nr_pbch_decode(UE, &UE->frame_parms, proc, *ssbIndex, nid, pbch_e_rx, &hfb, &ssb_idx, &symb_offset, &pbchResult);
-      if (pbchSuccess != 0)
+      fapiPbch_t pbchResult;
+      bool pbch_success, ordinary_success;
+      if (retry && retry->matching_dmrs) {
+        pbch_success = nr_pbch_decode_with_retry(UE, proc, retry, *ssbIndex, symbol, pbch_e_rx, &pbchResult, &ordinary_success);
+      } else {
+        int hfb, ssb_idx, symb_offset;
+        const int nid = UE->frame_parms.Nid_cell;
+        ordinary_success =
+            nr_pbch_decode(UE, &UE->frame_parms, proc, *ssbIndex, nid, pbch_e_rx, &hfb, &ssb_idx, &symb_offset, &pbchResult) == 0;
+        pbch_success = ordinary_success;
+      }
+      if (!pbch_success)
         LOG_E(PHY, "Frame %d, slot %d, SSB Index %d. Error decoding PBCH!\n", proc->frame_rx, proc->nr_slot_rx, *ssbIndex);
       else
         T(T_NRUE_PHY_MIB, T_INT(proc->frame_rx), T_INT(proc->nr_slot_rx), T_INT(*ssbIndex), T_BUFFER(pbchResult.decoded_output, 3));
-      // Measure timing offset if PBCH is present in slot
-      if (UE->no_timing_correction == 0 && pbchSuccess == 0) {
+      // Keep radio tracking tied to ordinary decode success.
+      if (UE->no_timing_correction == 0 && ordinary_success) {
         sampleShift = nr_adjust_synch_ue(&UE->frame_parms, UE, pbch_ch_est_time, proc->frame_rx, proc->nr_slot_rx, 16384);
       }
 
       // Continuous FO estimation and compensation
-      if (get_nrUE_params()->cont_fo_comp && pbchSuccess == 0) {
+      if (get_nrUE_params()->cont_fo_comp && ordinary_success) {
         double freq_offset = nr_ue_pbch_freq_offset(&UE->frame_parms, pbch_ch_est_sym1, pbch_ch_est_sym3);
         LOG_D(PHY,
               "compensated freq offset = %.3f Hz, detected residual freq offset = %.3f Hz, accumulated freq offset = %.3f Hz\n",
@@ -1128,6 +1323,8 @@ static int pbch_process(PHY_VARS_NR_UE *UE,
     }
     *pbchSymbCnt = 0; // For next SSB index
     *ssbIndex = -1;
+    if (retry)
+      retry->captured_symbols = 0;
   }
   return sampleShift;
 }
@@ -1158,6 +1355,17 @@ int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_da
   int nr_slot_rx = proc->nr_slot_rx;
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   int sampleShift = INT_MAX;
+  struct nr_ue_pbch_retry *retry = ue->pbch_retry;
+  if (retry) {
+    retry->captured_symbols = 0;
+    if (!ue->is_synchronized || ue->synch_request.received_synch_request || !nr_ue_pbch_retry_supported(ue)
+        || fp->ssb_start_subcarrier + PBCH_MAX_RE_PER_SYMBOL > fp->ofdm_symbol_size || proc->hfn_rx < 0) {
+      retry->reference.valid = false;
+      retry = NULL;
+    } else if (!nr_pbch_reference_is_fresh(&retry->reference, fp, proc)) {
+      retry->reference.valid = false;
+    }
+  }
   nr_ue_dlsch_init(phy_data->dlsch, NR_MAX_NB_LAYERS > 4 ? 2 : 1, ue->max_ldpc_iterations);
 
 #if T_TRACER
@@ -1179,7 +1387,7 @@ int pbch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_da
     // TODO: Remove loopover symbols when symbol based receiver is fully integrated.
     for (int symbol = 0; symbol < fp->symbols_per_slot; symbol++) {
       const int pbch_sampleShift =
-          pbch_process(ue, proc, symbol, &ssbIndex, pbch_ch_est_sym1, pbch_ch_est_time, pbch_e_rx, &pbchSymbCnt, &log2_maxh);
+          pbch_process(ue, proc, symbol, &ssbIndex, pbch_ch_est_sym1, pbch_ch_est_time, pbch_e_rx, &pbchSymbCnt, &log2_maxh, retry);
       // To prevent overwrite estimated shift by consecutive symbol calls
       sampleShift = (sampleShift == INT_MAX) ? pbch_sampleShift : sampleShift;
     }

@@ -88,6 +88,7 @@ extern uint16_t ue_id_g;
   {"ue-capability-rx2tx",          CONFIG_HLP_RX2TX,           0,               .iptr=&nrUE_params.ue_capability_rx2tx,      .defintval=3,      TYPE_INT,      0}, \
   {"ue-fd",                    "Frequency-domain I/O through the UE Low-PHY (executables/ue_fd)",  PARAMFLAG_BOOL,  .iptr=&nrUE_params.use_ue_fd, .defintval=0, TYPE_INT, 0}, \
   {"ue-fd-sync-timeout",       "FD-UE sync search timeout in ms (default 5000)", 0, .iptr=&nrUE_params.ue_fd_sync_timeout_ms, .defintval=5000, TYPE_INT, 0}, \
+  {"pbch-metric-recovery",     "Enable one guarded serving-cell PBCH retry after a CRC failure (FR1, one RX antenna)\n", PARAMFLAG_BOOL, .iptr=&nrUE_params.pbch_metric_recovery, .defintval=0, TYPE_INT, 0}, \
   {"sync-ref",                     CONFIG_HLP_SL_SYNCSOURCEUE, 0,               .uptr=&(nrUE_params.sync_ref),               .defuintval=0,     TYPE_UINT32,   0}, \
 }
 // clang-format on
@@ -136,6 +137,7 @@ typedef struct {
   int use_ue_fd; // frequency-domain UE threads on the UE Low-PHY
   int ue_fd_sync_timeout_ms;  // sync search timeout of the UE Low-PHY
   uint32_t sync_ref;
+  int pbch_metric_recovery;
 } nrUE_params_t;
 extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);

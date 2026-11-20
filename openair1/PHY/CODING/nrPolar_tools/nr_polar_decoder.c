@@ -641,14 +641,8 @@ static inline void nr_polar_info_extraction_from_u(uint64_t *Cprime,
   }
 }
 
-uint32_t polar_decoder_int16(const int16_t *input,
-                             uint64_t *out,
-                             uint8_t ones_flag,
-                             int8_t messageType,
-                             uint16_t messageLength,
-                             uint8_t aggregation_level)
+uint32_t polar_decoder_int16_with_params(const int16_t *input, uint64_t *out, uint8_t ones_flag, t_nrPolar_params *polarParams)
 {
-  t_nrPolar_params *polarParams = nr_polar_params(messageType, messageLength, aggregation_level);
   const uint N = polarParams->N;
 #ifdef POLAR_CODING_DEBUG
   printf("\nRX\n");
@@ -817,6 +811,18 @@ uint32_t polar_decoder_int16(const int16_t *input,
 
   out[0] = Ar;
 
-  polarReturn(polarParams);
   return crc ^ rxcrc;
+}
+
+uint32_t polar_decoder_int16(const int16_t *input,
+                             uint64_t *out,
+                             uint8_t ones_flag,
+                             int8_t messageType,
+                             uint16_t messageLength,
+                             uint8_t aggregation_level)
+{
+  t_nrPolar_params *polarParams = nr_polar_params(messageType, messageLength, aggregation_level);
+  const uint32_t crc = polar_decoder_int16_with_params(input, out, ones_flag, polarParams);
+  polarReturn(polarParams);
+  return crc;
 }

@@ -46,6 +46,11 @@ static void nr_polar_delete(void)
   pthread_mutex_unlock(&PolarListMutex);
 }
 
+static void nr_polar_init_params(t_nrPolar_params *newPolarInitNode,
+                                 int8_t messageType,
+                                 uint16_t messageLength,
+                                 int aggregation_level);
+
 t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, int aggregation_level)
 {
   // The lock is weak, because we never delete in the list, only at exit time
@@ -75,6 +80,15 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, in
   *newPolarInitNode = (t_nrPolar_params){.busy = true, .nextPtr = PolarList, .tree_linearization.is_initialized = false};
   PolarList = newPolarInitNode;
   pthread_mutex_unlock(&PolarListMutex);
+  nr_polar_init_params(newPolarInitNode, messageType, messageLength, aggregation_level);
+  return newPolarInitNode;
+}
+
+static void nr_polar_init_params(t_nrPolar_params *newPolarInitNode,
+                                 int8_t messageType,
+                                 uint16_t messageLength,
+                                 int aggregation_level)
+{
   //   LOG_D(PHY,"Setting new polarParams index %d, messageType %d, messageLength %d, aggregation_prime %d\n",(messageType *
   //   messageLength * aggregation_prime),messageType,messageLength,aggregation_prime);
   newPolarInitNode->idx = PolarKey;
@@ -235,7 +249,24 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, in
   qsort((void *)newPolarInitNode->Q_I_N, newPolarInitNode->K, sizeof(int16_t), intcmp);
 
   build_polar_tables(newPolarInitNode);
-  return newPolarInitNode;
+}
+
+t_nrPolar_params *nr_polar_create_pbch_decoder(void)
+{
+  t_nrPolar_params *params = memalign(32, sizeof(*params));
+  AssertFatal(params, "Could not allocate a PBCH decoder\n");
+  *params = (t_nrPolar_params){0};
+  nr_polar_init_params(params, NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
+  // Build the decoder's operation list before the receive thread starts.
+  uint8_t bits[1 << NR_POLAR_PBCH_N_MAX] = {0};
+  memset(treeAlpha(params->decoder.root), 0, params->N * sizeof(int16_t));
+  generic_polar_decoder(params, params->decoder.root, bits);
+  return params;
+}
+
+void nr_polar_destroy_pbch_decoder(t_nrPolar_params *params)
+{
+  nr_polar_delete_list(params);
 }
 
 void nr_polar_print_polarParams()

@@ -516,6 +516,13 @@ c32_t nr_pbch_dmrs_correlation(const NR_DL_FRAME_PARMS *frame_parms,
   return computed_val;
 }
 
+static const int16_t *const pbch_interpolation_filters[4][3] = {
+    {filt16a_l0, filt16a_m0, filt16a_r0},
+    {filt16a_l1, filt16a_m1, filt16a_r1},
+    {filt16a_l2, filt16a_m2, filt16a_r2},
+    {filt16a_l3, filt16a_m3, filt16a_r3},
+};
+
 int nr_pbch_channel_estimation(const NR_DL_FRAME_PARMS *frame_parms,
                                const sl_nr_ue_phy_params_t *sl_phy_params,
                                c16_t dl_ch_estimates[frame_parms->ofdm_symbol_size],
@@ -556,37 +563,9 @@ int nr_pbch_channel_estimation(const NR_DL_FRAME_PARMS *frame_parms,
              proc->nr_slot_rx,
              k);
 
-  const int16_t *fl, *fm, *fr;
-  switch (k) {
-  case 0:
-    fl = filt16a_l0;
-    fm = filt16a_m0;
-    fr = filt16a_r0;
-    break;
-
-  case 1:
-    fl = filt16a_l1;
-    fm = filt16a_m1;
-    fr = filt16a_r1;
-    break;
-
-  case 2:
-    fl = filt16a_l2;
-    fm = filt16a_m2;
-    fr = filt16a_r2;
-    break;
-
-  case 3:
-    fl = filt16a_l3;
-    fm = filt16a_m3;
-    fr = filt16a_r3;
-    break;
-
-  default:
-    msg("pbch_channel_estimation: k=%d -> ERROR\n",k);
-    return(-1);
-    break;
-  }
+  const int16_t *fl = pbch_interpolation_filters[k][0];
+  const int16_t *fm = pbch_interpolation_filters[k][1];
+  const int16_t *fr = pbch_interpolation_filters[k][2];
 
   // generate pilot
   // Note: pilot returned by the following function is already the complex conjugate of the transmitted DMRS
@@ -674,6 +653,43 @@ int nr_pbch_channel_estimation(const NR_DL_FRAME_PARMS *frame_parms,
 
   TracyCZoneEnd(ctx);
   return(0);
+}
+
+static int16_t nr_pbch_round_q14(int64_t value)
+{
+  const int64_t rounded = value < 0 ? -((-value + 8192) >> 14) : (value + 8192) >> 14;
+  return rounded > INT16_MAX ? INT16_MAX : rounded < INT16_MIN ? INT16_MIN : rounded;
+}
+
+void nr_pbch_channel_estimation_retry(const NR_DL_FRAME_PARMS *fp,
+                                      int ssb_index,
+                                      int half_frame,
+                                      int dmrss,
+                                      const c16_t rxdata[PBCH_MAX_RE_PER_SYMBOL],
+                                      c16_t estimates[PBCH_MAX_RE_PER_SYMBOL])
+{
+  const int k = fp->Nid_cell % 4;
+  const int16_t *const *filters = pbch_interpolation_filters[k];
+  c16_t pilots[3 * NR_PBCH_NUM_RB];
+  const int dmrs_half = fp->Lmax == 4 ? half_frame : 0;
+  nr_pbch_dmrs_rx(dmrss, nr_gold_pbch(fp->Lmax, fp->Nid_cell, dmrs_half, ssb_index & 7), pilots, false);
+
+  memset(estimates, 0, PBCH_MAX_RE_PER_SYMBOL * sizeof(*estimates));
+  for (int rb = 0, p = 0; rb < NR_PBCH_NUM_RB; ++rb) {
+    // Symbol 2 carries PBCH in the four RBs at each edge of the SSB.
+    if (dmrss == 1 && rb == 4)
+      rb = 16;
+    const int start = rb * NR_NB_SC_PER_RB;
+    c16_t ch[3];
+    for (int j = 0; j < 3; ++j)
+      ch[j] = c16mulShift(pilots[p++], rxdata[start + k + 4 * j], 15);
+    // The Q14 filters have no taps beyond this RB. Round after summing the three pilots.
+    for (int re = 0; re < NR_NB_SC_PER_RB; ++re) {
+      const int64_t r = (int64_t)filters[0][re] * ch[0].r + (int64_t)filters[1][re] * ch[1].r + (int64_t)filters[2][re] * ch[2].r;
+      const int64_t i = (int64_t)filters[0][re] * ch[0].i + (int64_t)filters[1][re] * ch[1].i + (int64_t)filters[2][re] * ch[2].i;
+      estimates[start + re] = (c16_t){.r = nr_pbch_round_q14(r), .i = nr_pbch_round_q14(i)};
+    }
+  }
 }
 
 void nr_pdcch_channel_estimation(const NR_DL_FRAME_PARMS *frame_parms,

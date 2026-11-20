@@ -493,6 +493,7 @@ typedef struct PHY_VARS_NR_UE_s {
     uint32_t llr_buf_max;
   } *pdsch_scratch;
   int pdsch_num_actors;
+  struct nr_ue_pbch_retry *pbch_retry;
 } PHY_VARS_NR_UE;
 typedef struct pdsch_scratch_s pdsch_scratch_t;
 
